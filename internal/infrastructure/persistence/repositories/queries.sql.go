@@ -8,8 +8,6 @@ package repositories
 import (
 	"context"
 	"time"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const addLabelToNote = `-- name: AddLabelToNote :exec
@@ -63,20 +61,19 @@ func (q *Queries) CreateLabel(ctx context.Context, arg CreateLabelParams) (Label
 }
 
 const createNote = `-- name: CreateNote :one
-INSERT INTO notes (id, user_id, title, content, is_archived, label, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, user_id, title, content, is_archived, label, created_at, updated_at
+INSERT INTO notes (id, user_id, title, content, is_archived, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, user_id, title, content, is_archived, created_at, updated_at
 `
 
 type CreateNoteParams struct {
-	ID         string      `json:"id"`
-	UserID     string      `json:"user_id"`
-	Title      string      `json:"title"`
-	Content    string      `json:"content"`
-	IsArchived bool        `json:"is_archived"`
-	Label      pgtype.Text `json:"label"`
-	CreatedAt  time.Time   `json:"created_at"`
-	UpdatedAt  time.Time   `json:"updated_at"`
+	ID         string    `json:"id"`
+	UserID     string    `json:"user_id"`
+	Title      string    `json:"title"`
+	Content    string    `json:"content"`
+	IsArchived bool      `json:"is_archived"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, error) {
@@ -86,7 +83,6 @@ func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, e
 		arg.Title,
 		arg.Content,
 		arg.IsArchived,
-		arg.Label,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -97,7 +93,6 @@ func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, e
 		&i.Title,
 		&i.Content,
 		&i.IsArchived,
-		&i.Label,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -199,7 +194,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id string) error {
 }
 
 const getArchivedNotesByUserID = `-- name: GetArchivedNotesByUserID :many
-SELECT id, user_id, title, content, is_archived, label, created_at, updated_at FROM notes WHERE user_id = $1 AND is_archived = true ORDER BY updated_at DESC
+SELECT id, user_id, title, content, is_archived, created_at, updated_at FROM notes WHERE user_id = $1 AND is_archived = true ORDER BY updated_at DESC
 `
 
 func (q *Queries) GetArchivedNotesByUserID(ctx context.Context, userID string) ([]Note, error) {
@@ -217,7 +212,6 @@ func (q *Queries) GetArchivedNotesByUserID(ctx context.Context, userID string) (
 			&i.Title,
 			&i.Content,
 			&i.IsArchived,
-			&i.Label,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -338,7 +332,7 @@ func (q *Queries) GetLabelsForNote(ctx context.Context, noteID string) ([]Label,
 }
 
 const getNoteByID = `-- name: GetNoteByID :one
-SELECT id, user_id, title, content, is_archived, label, created_at, updated_at FROM notes WHERE id = $1
+SELECT id, user_id, title, content, is_archived, created_at, updated_at FROM notes WHERE id = $1
 `
 
 func (q *Queries) GetNoteByID(ctx context.Context, id string) (Note, error) {
@@ -350,7 +344,6 @@ func (q *Queries) GetNoteByID(ctx context.Context, id string) (Note, error) {
 		&i.Title,
 		&i.Content,
 		&i.IsArchived,
-		&i.Label,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -358,7 +351,7 @@ func (q *Queries) GetNoteByID(ctx context.Context, id string) (Note, error) {
 }
 
 const getNotesByUserID = `-- name: GetNotesByUserID :many
-SELECT id, user_id, title, content, is_archived, label, created_at, updated_at FROM notes WHERE user_id = $1 AND is_archived = false ORDER BY updated_at DESC
+SELECT id, user_id, title, content, is_archived, created_at, updated_at FROM notes WHERE user_id = $1 AND is_archived = false ORDER BY updated_at DESC
 `
 
 func (q *Queries) GetNotesByUserID(ctx context.Context, userID string) ([]Note, error) {
@@ -376,7 +369,6 @@ func (q *Queries) GetNotesByUserID(ctx context.Context, userID string) ([]Note, 
 			&i.Title,
 			&i.Content,
 			&i.IsArchived,
-			&i.Label,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -541,16 +533,15 @@ func (q *Queries) UpdateLabel(ctx context.Context, arg UpdateLabelParams) error 
 }
 
 const updateNote = `-- name: UpdateNote :exec
-UPDATE notes SET title = $2, content = $3, is_archived = $4, label = $5, updated_at = $6 WHERE id = $1
+UPDATE notes SET title = $2, content = $3, is_archived = $4, updated_at = $5 WHERE id = $1
 `
 
 type UpdateNoteParams struct {
-	ID         string      `json:"id"`
-	Title      string      `json:"title"`
-	Content    string      `json:"content"`
-	IsArchived bool        `json:"is_archived"`
-	Label      pgtype.Text `json:"label"`
-	UpdatedAt  time.Time   `json:"updated_at"`
+	ID         string    `json:"id"`
+	Title      string    `json:"title"`
+	Content    string    `json:"content"`
+	IsArchived bool      `json:"is_archived"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 func (q *Queries) UpdateNote(ctx context.Context, arg UpdateNoteParams) error {
@@ -559,7 +550,6 @@ func (q *Queries) UpdateNote(ctx context.Context, arg UpdateNoteParams) error {
 		arg.Title,
 		arg.Content,
 		arg.IsArchived,
-		arg.Label,
 		arg.UpdatedAt,
 	)
 	return err
