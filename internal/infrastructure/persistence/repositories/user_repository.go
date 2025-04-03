@@ -42,7 +42,7 @@ func (r *UserRepositoryImpl) GetByID(ctx context.Context, id string) (*entities.
 		return nil, err
 	}
 
-	user, err := r.q.GetUserByID(ctx, userID)
+	user, err := r.q.GetUserByID(ctx, userID.String())
 	if err != nil {
 		if err.Error() == "no rows in result set" {
 			return nil, nil
@@ -51,7 +51,7 @@ func (r *UserRepositoryImpl) GetByID(ctx context.Context, id string) (*entities.
 	}
 
 	return &entities.User{
-		ID:       user.ID.String(),
+		ID:       user.ID,
 		Email:    user.Email,
 		Name:     user.Name,
 		Password: user.Password,
@@ -68,7 +68,7 @@ func (r *UserRepositoryImpl) GetByEmail(ctx context.Context, email string) (*ent
 	}
 
 	return &entities.User{
-		ID:       user.ID.String(),
+		ID:       user.ID,
 		Email:    user.Email,
 		Name:     user.Name,
 		Password: user.Password,
@@ -82,7 +82,7 @@ func (r *UserRepositoryImpl) Update(ctx context.Context, user *entities.User) er
 	}
 
 	params := UpdateUserParams{
-		ID:       userID,
+		ID:       userID.String(),
 		Email:    user.Email,
 		Name:     user.Name,
 		Password: user.Password,
@@ -97,5 +97,5 @@ func (r *UserRepositoryImpl) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
-	return r.q.DeleteUser(ctx, userID)
+	return r.q.DeleteUser(ctx, userID.String())
 }
