@@ -19,7 +19,7 @@ RETURNING id, user_id, expires_at, created_at
 `
 
 type CreateSessionParams struct {
-	UserID    uuid.UUID `json:"user_id"`
+	UserID    string    `json:"user_id"`
 	ExpiresAt time.Time `json:"expires_at"`
 }
 
@@ -65,7 +65,7 @@ const deleteAllSessionsByUserID = `-- name: DeleteAllSessionsByUserID :exec
 DELETE FROM sessions WHERE user_id = $1
 `
 
-func (q *Queries) DeleteAllSessionsByUserID(ctx context.Context, userID uuid.UUID) error {
+func (q *Queries) DeleteAllSessionsByUserID(ctx context.Context, userID string) error {
 	_, err := q.db.Exec(ctx, deleteAllSessionsByUserID, userID)
 	return err
 }
@@ -74,7 +74,7 @@ const deleteSession = `-- name: DeleteSession :exec
 DELETE FROM sessions WHERE id = $1
 `
 
-func (q *Queries) DeleteSession(ctx context.Context, id uuid.UUID) error {
+func (q *Queries) DeleteSession(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, deleteSession, id)
 	return err
 }
@@ -83,7 +83,7 @@ const deleteUser = `-- name: DeleteUser :exec
 DELETE FROM users WHERE id = $1
 `
 
-func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) error {
+func (q *Queries) DeleteUser(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, deleteUser, id)
 	return err
 }
@@ -92,7 +92,7 @@ const getSessionByID = `-- name: GetSessionByID :one
 SELECT id, user_id, expires_at, created_at FROM sessions WHERE id = $1
 `
 
-func (q *Queries) GetSessionByID(ctx context.Context, id uuid.UUID) (Session, error) {
+func (q *Queries) GetSessionByID(ctx context.Context, id string) (Session, error) {
 	row := q.db.QueryRow(ctx, getSessionByID, id)
 	var i Session
 	err := row.Scan(
@@ -119,16 +119,16 @@ WHERE sessions.id = $1
 `
 
 type GetSessionWithUserRow struct {
-	SessionID        uuid.UUID `json:"session_id"`
-	SessionUserID    uuid.UUID `json:"session_user_id"`
+	SessionID        string    `json:"session_id"`
+	SessionUserID    string    `json:"session_user_id"`
 	SessionExpiresAt time.Time `json:"session_expires_at"`
 	SessionCreatedAt time.Time `json:"session_created_at"`
-	UserID           uuid.UUID `json:"user_id"`
+	UserID           string    `json:"user_id"`
 	UserEmail        string    `json:"user_email"`
 	UserName         string    `json:"user_name"`
 }
 
-func (q *Queries) GetSessionWithUser(ctx context.Context, id uuid.UUID) (GetSessionWithUserRow, error) {
+func (q *Queries) GetSessionWithUser(ctx context.Context, id string) (GetSessionWithUserRow, error) {
 	row := q.db.QueryRow(ctx, getSessionWithUser, id)
 	var i GetSessionWithUserRow
 	err := row.Scan(
@@ -165,7 +165,7 @@ const getUserByID = `-- name: GetUserByID :one
 SELECT id, email, name, password, created_at, updated_at FROM users WHERE id = $1
 `
 
-func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
+func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
 	row := q.db.QueryRow(ctx, getUserByID, id)
 	var i User
 	err := row.Scan(
@@ -184,7 +184,7 @@ UPDATE sessions SET expires_at = $2 WHERE id = $1
 `
 
 type UpdateSessionExpiresAtParams struct {
-	ID        uuid.UUID `json:"id"`
+	ID        string    `json:"id"`
 	ExpiresAt time.Time `json:"expires_at"`
 }
 
@@ -198,10 +198,10 @@ UPDATE users SET email = $2, name = $3, password = $4 WHERE id = $1
 `
 
 type UpdateUserParams struct {
-	ID       uuid.UUID `json:"id"`
-	Email    string    `json:"email"`
-	Name     string    `json:"name"`
-	Password string    `json:"password"`
+	ID       string `json:"id"`
+	Email    string `json:"email"`
+	Name     string `json:"name"`
+	Password string `json:"password"`
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
