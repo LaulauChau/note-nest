@@ -8,7 +8,6 @@ import (
 
 	"github.com/LaulauChau/note-nest/internal/domain/entities"
 	"github.com/LaulauChau/note-nest/internal/domain/repositories"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type NoteRepositoryImpl struct {
@@ -38,7 +37,6 @@ func (r *NoteRepositoryImpl) Create(ctx context.Context, note *entities.Note) er
 		Title:      note.Title,
 		Content:    note.Content,
 		IsArchived: note.IsArchived,
-		Label:      pgtype.Text{String: note.Label, Valid: true},
 		CreatedAt:  note.CreatedAt,
 		UpdatedAt:  note.UpdatedAt,
 	}
@@ -67,7 +65,6 @@ func (r *NoteRepositoryImpl) GetByID(ctx context.Context, id string) (*entities.
 		Title:      note.Title,
 		Content:    note.Content,
 		IsArchived: note.IsArchived,
-		Label:      note.Label.String,
 		CreatedAt:  note.CreatedAt,
 		UpdatedAt:  note.UpdatedAt,
 	}, nil
@@ -92,7 +89,6 @@ func (r *NoteRepositoryImpl) GetByUserID(ctx context.Context, userID string) ([]
 			Title:      note.Title,
 			Content:    note.Content,
 			IsArchived: note.IsArchived,
-			Label:      note.Label.String,
 			CreatedAt:  note.CreatedAt,
 			UpdatedAt:  note.UpdatedAt,
 		}
@@ -120,7 +116,6 @@ func (r *NoteRepositoryImpl) GetArchivedByUserID(ctx context.Context, userID str
 			Title:      note.Title,
 			Content:    note.Content,
 			IsArchived: note.IsArchived,
-			Label:      note.Label.String,
 			CreatedAt:  note.CreatedAt,
 			UpdatedAt:  note.UpdatedAt,
 		}
@@ -140,7 +135,6 @@ func (r *NoteRepositoryImpl) Update(ctx context.Context, note *entities.Note) er
 		Title:      note.Title,
 		Content:    note.Content,
 		IsArchived: note.IsArchived,
-		Label:      pgtype.Text{String: note.Label, Valid: true},
 		UpdatedAt:  time.Now(),
 	}
 

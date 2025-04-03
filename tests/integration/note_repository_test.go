@@ -81,7 +81,6 @@ func TestNoteRepository(t *testing.T) {
 		assert.Equal(t, createUserID, retrievedNote.UserID)
 		assert.Equal(t, "Test Note", retrievedNote.Title)
 		assert.Equal(t, "This is a test note content.", retrievedNote.Content)
-		assert.Equal(t, "test-label", retrievedNote.Label)
 		assert.False(t, retrievedNote.IsArchived)
 	})
 
@@ -254,7 +253,6 @@ func TestNoteRepository(t *testing.T) {
 		assert.Equal(t, idUserID, retrievedNote.UserID)
 		assert.Equal(t, "Get By ID Note", retrievedNote.Title)
 		assert.Equal(t, "Get by ID content", retrievedNote.Content)
-		assert.Equal(t, "get-by-id", retrievedNote.Label)
 		assert.False(t, retrievedNote.IsArchived)
 	})
 
@@ -310,7 +308,6 @@ func TestNoteRepository(t *testing.T) {
 		assert.Equal(t, user.ID, retrievedNote.UserID)
 		assert.Equal(t, "Updated Title", retrievedNote.Title)
 		assert.Equal(t, "Updated content", retrievedNote.Content)
-		assert.Equal(t, "updated-label", retrievedNote.Label)
 		assert.True(t, retrievedNote.IsArchived)
 		assert.Equal(t, note.CreatedAt.Unix(), retrievedNote.CreatedAt.Unix()) // Created time should not change
 		assert.True(t, retrievedNote.UpdatedAt.After(note.UpdatedAt))          // Updated time should be newer
