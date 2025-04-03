@@ -23,13 +23,14 @@ func TestNoteUseCaseIntegration(t *testing.T) {
 	queries := repositories.New(db.Pool)
 	userRepo := repositories.NewUserRepository(queries)
 	noteRepo := repositories.NewNoteRepository(queries)
+	labelRepo := repositories.NewLabelRepository(queries)
 
 	// Initialize services
 	hashService := services.NewArgonHashService()
 
 	// Initialize use cases
 	userUseCase := use_cases.NewUserUseCase(userRepo, hashService)
-	noteUseCase := use_cases.NewNoteUseCase(noteRepo, userRepo)
+	noteUseCase := use_cases.NewNoteUseCase(noteRepo, userRepo, labelRepo)
 
 	// Create two test users
 	email1 := "user1@example.com"

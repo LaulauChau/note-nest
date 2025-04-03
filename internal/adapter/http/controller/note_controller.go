@@ -28,13 +28,14 @@ type CreateNoteRequest struct {
 }
 
 type NoteResponse struct {
-	ID         string `json:"id"`
-	Title      string `json:"title"`
-	Content    string `json:"content"`
-	IsArchived bool   `json:"is_archived"`
-	Label      string `json:"label"`
-	CreatedAt  string `json:"created_at"`
-	UpdatedAt  string `json:"updated_at"`
+	ID         string          `json:"id"`
+	Title      string          `json:"title"`
+	Content    string          `json:"content"`
+	IsArchived bool            `json:"is_archived"`
+	Label      string          `json:"label"`  // Keep for backward compatibility
+	Labels     []LabelResponse `json:"labels"` // New field for associated labels
+	CreatedAt  string          `json:"created_at"`
+	UpdatedAt  string          `json:"updated_at"`
 }
 
 func (c *NoteController) CreateNote(w http.ResponseWriter, r *http.Request) {
@@ -101,8 +102,8 @@ func (c *NoteController) GetNoteByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the note
-	note, err := c.noteUseCase.GetNoteByID(ctx, noteID, user.ID)
+	// Get the note with labels
+	note, labels, err := c.noteUseCase.GetNoteWithLabels(ctx, noteID, user.ID)
 	if err != nil {
 		if err.Error() == "note not found" {
 			http.Error(w, "Note not found", http.StatusNotFound)
@@ -112,14 +113,27 @@ func (c *NoteController) GetNoteByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return the note
+	// Convert labels to response format
+	labelResponses := make([]LabelResponse, len(labels))
+	for i, label := range labels {
+		labelResponses[i] = LabelResponse{
+			ID:        label.ID,
+			Name:      label.Name,
+			Color:     label.Color,
+			CreatedAt: label.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: label.UpdatedAt.Format(time.RFC3339),
+		}
+	}
+
+	// Return the note with labels
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(NoteResponse{
 		ID:         note.ID,
 		Title:      note.Title,
 		Content:    note.Content,
 		IsArchived: note.IsArchived,
-		Label:      note.Label,
+		Label:      note.Label, // Keep for backward compatibility
+		Labels:     labelResponses,
 		CreatedAt:  note.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:  note.UpdatedAt.Format(time.RFC3339),
 	}); err != nil {

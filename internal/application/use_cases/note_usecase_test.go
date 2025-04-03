@@ -57,11 +57,83 @@ func (m *MockNoteRepository) Delete(ctx context.Context, id string) error {
 	return args.Error(0)
 }
 
+// MockLabelRepository mocks the LabelRepository interface
+type MockLabelRepository struct {
+	mock.Mock
+}
+
+// Add mock implementations for all methods in repositories.LabelRepository interface
+func (m *MockLabelRepository) Create(ctx context.Context, label *entities.Label) error {
+	args := m.Called(ctx, label)
+	return args.Error(0)
+}
+
+func (m *MockLabelRepository) GetByID(ctx context.Context, id string) (*entities.Label, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entities.Label), args.Error(1)
+}
+
+func (m *MockLabelRepository) GetByUserID(ctx context.Context, userID string) ([]*entities.Label, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entities.Label), args.Error(1)
+}
+
+func (m *MockLabelRepository) GetByName(ctx context.Context, userID, name string) (*entities.Label, error) {
+	args := m.Called(ctx, userID, name)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entities.Label), args.Error(1)
+}
+
+func (m *MockLabelRepository) Update(ctx context.Context, label *entities.Label) error {
+	args := m.Called(ctx, label)
+	return args.Error(0)
+}
+
+func (m *MockLabelRepository) Delete(ctx context.Context, id string) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
+func (m *MockLabelRepository) AddLabelToNote(ctx context.Context, noteID, labelID string) error {
+	args := m.Called(ctx, noteID, labelID)
+	return args.Error(0)
+}
+
+func (m *MockLabelRepository) RemoveLabelFromNote(ctx context.Context, noteID, labelID string) error {
+	args := m.Called(ctx, noteID, labelID)
+	return args.Error(0)
+}
+
+func (m *MockLabelRepository) GetLabelsForNote(ctx context.Context, noteID string) ([]*entities.Label, error) {
+	args := m.Called(ctx, noteID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entities.Label), args.Error(1)
+}
+
+func (m *MockLabelRepository) GetNotesForLabel(ctx context.Context, labelID string) ([]string, error) {
+	args := m.Called(ctx, labelID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
+}
+
 func TestCreateNote(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	mockNoteRepo := new(MockNoteRepository)
 	mockUserRepo := new(MockUserRepository)
+	mockLabelRepo := new(MockLabelRepository)
 
 	userID := uuid.New().String()
 	title := "Test Note"
@@ -85,7 +157,7 @@ func TestCreateNote(t *testing.T) {
 			note.IsArchived == false
 	})).Return(nil)
 
-	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo, mockLabelRepo)
 
 	// Act
 	note, err := useCase.CreateNote(ctx, userID, title, content, label)
@@ -111,6 +183,7 @@ func TestCreateNote_UserNotFound(t *testing.T) {
 	ctx := context.Background()
 	mockNoteRepo := new(MockNoteRepository)
 	mockUserRepo := new(MockUserRepository)
+	mockLabelRepo := new(MockLabelRepository)
 
 	userID := uuid.New().String()
 	title := "Test Note"
@@ -120,7 +193,7 @@ func TestCreateNote_UserNotFound(t *testing.T) {
 	// Mock user repository to return nil (user not found)
 	mockUserRepo.On("GetByID", ctx, userID).Return(nil, nil)
 
-	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo, mockLabelRepo)
 
 	// Act
 	note, err := useCase.CreateNote(ctx, userID, title, content, label)
@@ -140,6 +213,7 @@ func TestGetNoteByID(t *testing.T) {
 	ctx := context.Background()
 	mockNoteRepo := new(MockNoteRepository)
 	mockUserRepo := new(MockUserRepository)
+	mockLabelRepo := new(MockLabelRepository)
 
 	userID := uuid.New().String()
 	noteID := uuid.New().String()
@@ -157,7 +231,7 @@ func TestGetNoteByID(t *testing.T) {
 	// Mock note repository to return a note
 	mockNoteRepo.On("GetByID", ctx, noteID).Return(note, nil)
 
-	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo, mockLabelRepo)
 
 	// Act
 	result, err := useCase.GetNoteByID(ctx, noteID, userID)
@@ -173,6 +247,7 @@ func TestGetNoteByID_NotFound(t *testing.T) {
 	ctx := context.Background()
 	mockNoteRepo := new(MockNoteRepository)
 	mockUserRepo := new(MockUserRepository)
+	mockLabelRepo := new(MockLabelRepository)
 
 	userID := uuid.New().String()
 	noteID := uuid.New().String()
@@ -180,7 +255,7 @@ func TestGetNoteByID_NotFound(t *testing.T) {
 	// Mock note repository to return nil (note not found)
 	mockNoteRepo.On("GetByID", ctx, noteID).Return(nil, nil)
 
-	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo, mockLabelRepo)
 
 	// Act
 	result, err := useCase.GetNoteByID(ctx, noteID, userID)
@@ -197,6 +272,7 @@ func TestGetNoteByID_WrongUser(t *testing.T) {
 	ctx := context.Background()
 	mockNoteRepo := new(MockNoteRepository)
 	mockUserRepo := new(MockUserRepository)
+	mockLabelRepo := new(MockLabelRepository)
 
 	userID := uuid.New().String()
 	anotherUserID := uuid.New().String()
@@ -215,7 +291,7 @@ func TestGetNoteByID_WrongUser(t *testing.T) {
 	// Mock note repository to return a note that belongs to another user
 	mockNoteRepo.On("GetByID", ctx, noteID).Return(note, nil)
 
-	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo, mockLabelRepo)
 
 	// Act
 	result, err := useCase.GetNoteByID(ctx, noteID, userID)
@@ -232,6 +308,7 @@ func TestGetActiveNotes(t *testing.T) {
 	ctx := context.Background()
 	mockNoteRepo := new(MockNoteRepository)
 	mockUserRepo := new(MockUserRepository)
+	mockLabelRepo := new(MockLabelRepository)
 
 	userID := uuid.New().String()
 
@@ -264,7 +341,7 @@ func TestGetActiveNotes(t *testing.T) {
 	// Mock note repository to return notes
 	mockNoteRepo.On("GetByUserID", ctx, userID).Return(notes, nil)
 
-	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo, mockLabelRepo)
 
 	// Act
 	result, err := useCase.GetActiveNotes(ctx, userID)
@@ -282,6 +359,7 @@ func TestGetArchivedNotes(t *testing.T) {
 	ctx := context.Background()
 	mockNoteRepo := new(MockNoteRepository)
 	mockUserRepo := new(MockUserRepository)
+	mockLabelRepo := new(MockLabelRepository)
 
 	userID := uuid.New().String()
 
@@ -314,7 +392,7 @@ func TestGetArchivedNotes(t *testing.T) {
 	// Mock note repository to return archived notes
 	mockNoteRepo.On("GetArchivedByUserID", ctx, userID).Return(archivedNotes, nil)
 
-	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo, mockLabelRepo)
 
 	// Act
 	result, err := useCase.GetArchivedNotes(ctx, userID)
@@ -332,6 +410,7 @@ func TestUpdateNote(t *testing.T) {
 	ctx := context.Background()
 	mockNoteRepo := new(MockNoteRepository)
 	mockUserRepo := new(MockUserRepository)
+	mockLabelRepo := new(MockLabelRepository)
 
 	userID := uuid.New().String()
 	noteID := uuid.New().String()
@@ -374,7 +453,7 @@ func TestUpdateNote(t *testing.T) {
 		assert.True(t, updatedNote.UpdatedAt.After(pastTime))
 	})
 
-	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo, mockLabelRepo)
 
 	// Act
 	updatedNote, err := useCase.UpdateNote(ctx, noteID, userID, newTitle, newContent, newLabel, newIsArchived)
@@ -399,6 +478,7 @@ func TestUpdateNote_NotFound(t *testing.T) {
 	ctx := context.Background()
 	mockNoteRepo := new(MockNoteRepository)
 	mockUserRepo := new(MockUserRepository)
+	mockLabelRepo := new(MockLabelRepository)
 
 	userID := uuid.New().String()
 	noteID := uuid.New().String()
@@ -406,7 +486,7 @@ func TestUpdateNote_NotFound(t *testing.T) {
 	// Mock note repository to return nil (note not found)
 	mockNoteRepo.On("GetByID", ctx, noteID).Return(nil, nil)
 
-	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo, mockLabelRepo)
 
 	// Act
 	updatedNote, err := useCase.UpdateNote(ctx, noteID, userID, "Title", "Content", "label", false)
@@ -426,6 +506,7 @@ func TestUpdateNote_WrongUser(t *testing.T) {
 	ctx := context.Background()
 	mockNoteRepo := new(MockNoteRepository)
 	mockUserRepo := new(MockUserRepository)
+	mockLabelRepo := new(MockLabelRepository)
 
 	userID := uuid.New().String()
 	anotherUserID := uuid.New().String()
@@ -446,7 +527,7 @@ func TestUpdateNote_WrongUser(t *testing.T) {
 	// Mock note repository to return a note that belongs to another user
 	mockNoteRepo.On("GetByID", ctx, noteID).Return(note, nil)
 
-	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo, mockLabelRepo)
 
 	// Act
 	updatedNote, err := useCase.UpdateNote(ctx, noteID, userID, "Updated Title", "Updated content", "updated-label", true)
@@ -466,6 +547,7 @@ func TestDeleteNote(t *testing.T) {
 	ctx := context.Background()
 	mockNoteRepo := new(MockNoteRepository)
 	mockUserRepo := new(MockUserRepository)
+	mockLabelRepo := new(MockLabelRepository)
 
 	userID := uuid.New().String()
 	noteID := uuid.New().String()
@@ -486,7 +568,7 @@ func TestDeleteNote(t *testing.T) {
 	// Mock note repository to delete the note
 	mockNoteRepo.On("Delete", ctx, noteID).Return(nil)
 
-	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo, mockLabelRepo)
 
 	// Act
 	err := useCase.DeleteNote(ctx, noteID, userID)
@@ -501,6 +583,7 @@ func TestDeleteNote_NotFound(t *testing.T) {
 	ctx := context.Background()
 	mockNoteRepo := new(MockNoteRepository)
 	mockUserRepo := new(MockUserRepository)
+	mockLabelRepo := new(MockLabelRepository)
 
 	userID := uuid.New().String()
 	noteID := uuid.New().String()
@@ -508,7 +591,7 @@ func TestDeleteNote_NotFound(t *testing.T) {
 	// Mock note repository to return nil (note not found)
 	mockNoteRepo.On("GetByID", ctx, noteID).Return(nil, nil)
 
-	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo, mockLabelRepo)
 
 	// Act
 	err := useCase.DeleteNote(ctx, noteID, userID)
@@ -527,6 +610,7 @@ func TestDeleteNote_WrongUser(t *testing.T) {
 	ctx := context.Background()
 	mockNoteRepo := new(MockNoteRepository)
 	mockUserRepo := new(MockUserRepository)
+	mockLabelRepo := new(MockLabelRepository)
 
 	userID := uuid.New().String()
 	anotherUserID := uuid.New().String()
@@ -545,7 +629,7 @@ func TestDeleteNote_WrongUser(t *testing.T) {
 	// Mock note repository to return a note that belongs to another user
 	mockNoteRepo.On("GetByID", ctx, noteID).Return(note, nil)
 
-	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo, mockLabelRepo)
 
 	// Act
 	err := useCase.DeleteNote(ctx, noteID, userID)

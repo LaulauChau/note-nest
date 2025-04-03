@@ -39,7 +39,7 @@ func TestHTTPHandlers(t *testing.T) {
 	// Initialize use cases
 	userUseCase := use_cases.NewUserUseCase(userRepo, hashService)
 	sessionUseCase := use_cases.NewSessionUseCase(sessionRepo, userRepo, tokenService)
-	noteUseCase := use_cases.NewNoteUseCase(noteRepo, userRepo)
+	noteUseCase := use_cases.NewNoteUseCase(noteRepo, userRepo, labelRepo)
 	labelUseCase := use_cases.NewLabelUseCase(labelRepo, userRepo, noteRepo)
 
 	// Initialize controllers
