@@ -52,11 +52,27 @@ func (s *Server) Start() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
+		// Define a channel to signal when shutdown is done
+		shutdownDone := make(chan struct{})
+
 		// Shutdown the server gracefully
-		if err := s.server.Shutdown(ctx); err != nil {
-			// Force shutdown if graceful shutdown fails
-			s.server.Close()
-			return fmt.Errorf("could not stop server gracefully: %w", err)
+		go func() {
+			defer close(shutdownDone)
+
+			if err := s.server.Shutdown(ctx); err != nil {
+				log.Printf("error during shutdown: %v", err)
+			}
+		}()
+
+		// Wait for shutdown to complete or timeout
+		select {
+		case <-time.After(30 * time.Second):
+			log.Println("server did not terminate gracefully, forcibly closing")
+			if err := s.server.Close(); err != nil {
+				log.Printf("error closing server: %v", err)
+			}
+		case <-shutdownDone:
+			log.Println("server terminated gracefully")
 		}
 	}
 
