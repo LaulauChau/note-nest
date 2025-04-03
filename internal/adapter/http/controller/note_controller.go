@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/LaulauChau/note-nest/internal/application/use_cases"
 	"github.com/LaulauChau/note-nest/internal/domain/entities"
 )
@@ -77,6 +79,128 @@ func (c *NoteController) CreateNote(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:  note.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:  note.UpdatedAt.Format(time.RFC3339),
 	}); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (c *NoteController) GetNoteByID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Get user from context (added by the auth middleware)
+	user, ok := r.Context().Value(UserContextKey).(*entities.User)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get note ID from URL parameter
+	noteID := chi.URLParam(r, "noteID")
+	if noteID == "" {
+		http.Error(w, "Note ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Get the note
+	note, err := c.noteUseCase.GetNoteByID(ctx, noteID, user.ID)
+	if err != nil {
+		if err.Error() == "note not found" {
+			http.Error(w, "Note not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to get note", http.StatusInternalServerError)
+		return
+	}
+
+	// Return the note
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(NoteResponse{
+		ID:         note.ID,
+		Title:      note.Title,
+		Content:    note.Content,
+		IsArchived: note.IsArchived,
+		Label:      note.Label,
+		CreatedAt:  note.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:  note.UpdatedAt.Format(time.RFC3339),
+	}); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (c *NoteController) GetActiveNotes(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Get user from context (added by the auth middleware)
+	user, ok := r.Context().Value(UserContextKey).(*entities.User)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get the notes
+	notes, err := c.noteUseCase.GetActiveNotes(ctx, user.ID)
+	if err != nil {
+		http.Error(w, "Failed to get notes", http.StatusInternalServerError)
+		return
+	}
+
+	// Convert to response format
+	response := make([]NoteResponse, len(notes))
+	for i, note := range notes {
+		response[i] = NoteResponse{
+			ID:         note.ID,
+			Title:      note.Title,
+			Content:    note.Content,
+			IsArchived: note.IsArchived,
+			Label:      note.Label,
+			CreatedAt:  note.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:  note.UpdatedAt.Format(time.RFC3339),
+		}
+	}
+
+	// Return the notes
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (c *NoteController) GetArchivedNotes(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Get user from context (added by the auth middleware)
+	user, ok := r.Context().Value(UserContextKey).(*entities.User)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get the notes
+	notes, err := c.noteUseCase.GetArchivedNotes(ctx, user.ID)
+	if err != nil {
+		http.Error(w, "Failed to get archived notes", http.StatusInternalServerError)
+		return
+	}
+
+	// Convert to response format
+	response := make([]NoteResponse, len(notes))
+	for i, note := range notes {
+		response[i] = NoteResponse{
+			ID:         note.ID,
+			Title:      note.Title,
+			Content:    note.Content,
+			IsArchived: note.IsArchived,
+			Label:      note.Label,
+			CreatedAt:  note.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:  note.UpdatedAt.Format(time.RFC3339),
+		}
+	}
+
+	// Return the notes
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}

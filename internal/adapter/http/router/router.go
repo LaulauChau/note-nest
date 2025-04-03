@@ -34,6 +34,9 @@ func NewRouter(userController *controller.UserController, sessionController *con
 		r.Get("/api/me", userController.GetCurrentUser)
 
 		r.Post("/api/notes", noteController.CreateNote)
+		r.Get("/api/notes", noteController.GetActiveNotes)
+		r.Get("/api/notes/archived", noteController.GetArchivedNotes)
+		r.Get("/api/notes/{noteID}", noteController.GetNoteByID)
 	})
 
 	return r
