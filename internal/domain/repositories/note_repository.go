@@ -11,6 +11,7 @@ type NoteRepository interface {
 
 	GetByID(ctx context.Context, id string) (*entities.Note, error)
 	GetByUserID(ctx context.Context, userID string) ([]*entities.Note, error)
+	GetArchivedByUserID(ctx context.Context, userID string) ([]*entities.Note, error) // Get archived
 
 	Update(ctx context.Context, note *entities.Note) error
 

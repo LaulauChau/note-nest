@@ -3,6 +3,7 @@ package use_cases_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -31,6 +32,14 @@ func (m *MockNoteRepository) GetByID(ctx context.Context, id string) (*entities.
 }
 
 func (m *MockNoteRepository) GetByUserID(ctx context.Context, userID string) ([]*entities.Note, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entities.Note), args.Error(1)
+}
+
+func (m *MockNoteRepository) GetArchivedByUserID(ctx context.Context, userID string) ([]*entities.Note, error) {
 	args := m.Called(ctx, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -124,4 +133,196 @@ func TestCreateNote_UserNotFound(t *testing.T) {
 	mockUserRepo.AssertExpectations(t)
 	// Create should not be called if user is not found
 	mockNoteRepo.AssertNotCalled(t, "Create")
+}
+
+func TestGetNoteByID(t *testing.T) {
+	// Arrange
+	ctx := context.Background()
+	mockNoteRepo := new(MockNoteRepository)
+	mockUserRepo := new(MockUserRepository)
+
+	userID := uuid.New().String()
+	noteID := uuid.New().String()
+
+	note := &entities.Note{
+		ID:         noteID,
+		UserID:     userID,
+		Title:      "Test Note",
+		Content:    "This is the content",
+		IsArchived: false,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+
+	// Mock note repository to return a note
+	mockNoteRepo.On("GetByID", ctx, noteID).Return(note, nil)
+
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+
+	// Act
+	result, err := useCase.GetNoteByID(ctx, noteID, userID)
+
+	// Assert
+	assert.NoError(t, err)
+	assert.Equal(t, note, result)
+	mockNoteRepo.AssertExpectations(t)
+}
+
+func TestGetNoteByID_NotFound(t *testing.T) {
+	// Arrange
+	ctx := context.Background()
+	mockNoteRepo := new(MockNoteRepository)
+	mockUserRepo := new(MockUserRepository)
+
+	userID := uuid.New().String()
+	noteID := uuid.New().String()
+
+	// Mock note repository to return nil (note not found)
+	mockNoteRepo.On("GetByID", ctx, noteID).Return(nil, nil)
+
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+
+	// Act
+	result, err := useCase.GetNoteByID(ctx, noteID, userID)
+
+	// Assert
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "note not found")
+	mockNoteRepo.AssertExpectations(t)
+}
+
+func TestGetNoteByID_WrongUser(t *testing.T) {
+	// Arrange
+	ctx := context.Background()
+	mockNoteRepo := new(MockNoteRepository)
+	mockUserRepo := new(MockUserRepository)
+
+	userID := uuid.New().String()
+	anotherUserID := uuid.New().String()
+	noteID := uuid.New().String()
+
+	note := &entities.Note{
+		ID:         noteID,
+		UserID:     anotherUserID, // Note belongs to another user
+		Title:      "Test Note",
+		Content:    "This is the content",
+		IsArchived: false,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+
+	// Mock note repository to return a note that belongs to another user
+	mockNoteRepo.On("GetByID", ctx, noteID).Return(note, nil)
+
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+
+	// Act
+	result, err := useCase.GetNoteByID(ctx, noteID, userID)
+
+	// Assert
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "note not found")
+	mockNoteRepo.AssertExpectations(t)
+}
+
+func TestGetActiveNotes(t *testing.T) {
+	// Arrange
+	ctx := context.Background()
+	mockNoteRepo := new(MockNoteRepository)
+	mockUserRepo := new(MockUserRepository)
+
+	userID := uuid.New().String()
+
+	user := &entities.User{
+		ID:    userID,
+		Email: "test@example.com",
+		Name:  "Test User",
+	}
+
+	notes := []*entities.Note{
+		{
+			ID:         uuid.New().String(),
+			UserID:     userID,
+			Title:      "Note 1",
+			Content:    "Content 1",
+			IsArchived: false,
+		},
+		{
+			ID:         uuid.New().String(),
+			UserID:     userID,
+			Title:      "Note 2",
+			Content:    "Content 2",
+			IsArchived: false,
+		},
+	}
+
+	// Mock user repository to return a valid user
+	mockUserRepo.On("GetByID", ctx, userID).Return(user, nil)
+
+	// Mock note repository to return notes
+	mockNoteRepo.On("GetByUserID", ctx, userID).Return(notes, nil)
+
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+
+	// Act
+	result, err := useCase.GetActiveNotes(ctx, userID)
+
+	// Assert
+	assert.NoError(t, err)
+	assert.Equal(t, notes, result)
+	assert.Len(t, result, 2)
+	mockUserRepo.AssertExpectations(t)
+	mockNoteRepo.AssertExpectations(t)
+}
+
+func TestGetArchivedNotes(t *testing.T) {
+	// Arrange
+	ctx := context.Background()
+	mockNoteRepo := new(MockNoteRepository)
+	mockUserRepo := new(MockUserRepository)
+
+	userID := uuid.New().String()
+
+	user := &entities.User{
+		ID:    userID,
+		Email: "test@example.com",
+		Name:  "Test User",
+	}
+
+	archivedNotes := []*entities.Note{
+		{
+			ID:         uuid.New().String(),
+			UserID:     userID,
+			Title:      "Archived Note 1",
+			Content:    "Content 1",
+			IsArchived: true,
+		},
+		{
+			ID:         uuid.New().String(),
+			UserID:     userID,
+			Title:      "Archived Note 2",
+			Content:    "Content 2",
+			IsArchived: true,
+		},
+	}
+
+	// Mock user repository to return a valid user
+	mockUserRepo.On("GetByID", ctx, userID).Return(user, nil)
+
+	// Mock note repository to return archived notes
+	mockNoteRepo.On("GetArchivedByUserID", ctx, userID).Return(archivedNotes, nil)
+
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+
+	// Act
+	result, err := useCase.GetArchivedNotes(ctx, userID)
+
+	// Assert
+	assert.NoError(t, err)
+	assert.Equal(t, archivedNotes, result)
+	assert.Len(t, result, 2)
+	mockUserRepo.AssertExpectations(t)
+	mockNoteRepo.AssertExpectations(t)
 }

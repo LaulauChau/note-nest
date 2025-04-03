@@ -101,6 +101,34 @@ func (r *NoteRepositoryImpl) GetByUserID(ctx context.Context, userID string) ([]
 	return result, nil
 }
 
+func (r *NoteRepositoryImpl) GetArchivedByUserID(ctx context.Context, userID string) ([]*entities.Note, error) {
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	notes, err := r.q.GetArchivedNotesByUserID(ctx, userUUID.String())
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*entities.Note, len(notes))
+	for i, note := range notes {
+		result[i] = &entities.Note{
+			ID:         note.ID,
+			UserID:     note.UserID,
+			Title:      note.Title,
+			Content:    note.Content,
+			IsArchived: note.IsArchived,
+			Label:      note.Label.String,
+			CreatedAt:  note.CreatedAt,
+			UpdatedAt:  note.UpdatedAt,
+		}
+	}
+
+	return result, nil
+}
+
 func (r *NoteRepositoryImpl) Update(ctx context.Context, note *entities.Note) error {
 	noteID, err := uuid.Parse(note.ID)
 	if err != nil {
