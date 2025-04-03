@@ -55,7 +55,7 @@ func main() {
 	// Initialize controllers
 	userController := controller.NewUserController(userUseCase, sessionUseCase)
 	sessionController := controller.NewSessionController(sessionUseCase)
-	noteController := controller.NewNoteController(noteUseCase)
+	noteController := controller.NewNoteController(noteUseCase, labelUseCase)
 	labelController := controller.NewLabelController(labelUseCase)
 
 	// Initialize router

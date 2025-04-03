@@ -161,3 +161,74 @@ func (uc *NoteUseCase) GetNoteWithLabels(ctx context.Context, noteID, userID str
 
 	return note, labels, nil
 }
+
+func (uc *NoteUseCase) CreateNoteWithLabels(ctx context.Context, userID, title, content, label string, labelIDs []string) (*entities.Note, error) {
+	// Create the note
+	note, err := uc.CreateNote(ctx, userID, title, content, label)
+	if err != nil {
+		return nil, err
+	}
+
+	// Associate labels with the note
+	for _, labelID := range labelIDs {
+		// Verify label exists and belongs to the user
+		label, err := uc.labelRepo.GetByID(ctx, labelID)
+		if err != nil || label == nil || label.UserID != userID {
+			continue // Skip invalid labels
+		}
+
+		// Associate label with note
+		uc.labelRepo.AddLabelToNote(ctx, note.ID, labelID)
+	}
+
+	return note, nil
+}
+
+func (uc *NoteUseCase) UpdateNoteWithLabels(ctx context.Context, noteID, userID, title, content, label string, isArchived bool, labelIDs []string) (*entities.Note, error) {
+	// Update the note
+	note, err := uc.UpdateNote(ctx, noteID, userID, title, content, label, isArchived)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get current labels for the note
+	currentLabels, err := uc.labelRepo.GetLabelsForNote(ctx, noteID)
+	if err != nil {
+		return note, err
+	}
+
+	// Create a map of current label IDs for easy lookup
+	currentLabelMap := make(map[string]bool)
+	for _, label := range currentLabels {
+		currentLabelMap[label.ID] = true
+	}
+
+	// Create a map of new label IDs for easy lookup
+	newLabelMap := make(map[string]bool)
+	for _, labelID := range labelIDs {
+		newLabelMap[labelID] = true
+	}
+
+	// Add new labels that weren't previously associated
+	for _, labelID := range labelIDs {
+		if !currentLabelMap[labelID] {
+			// Verify label exists and belongs to the user
+			label, err := uc.labelRepo.GetByID(ctx, labelID)
+			if err != nil || label == nil || label.UserID != userID {
+				continue // Skip invalid labels
+			}
+
+			// Associate label with note
+			uc.labelRepo.AddLabelToNote(ctx, noteID, labelID)
+		}
+	}
+
+	// Remove labels that are no longer associated
+	for _, label := range currentLabels {
+		if !newLabelMap[label.ID] {
+			uc.labelRepo.RemoveLabelFromNote(ctx, noteID, label.ID)
+		}
+	}
+
+	return note, nil
+}

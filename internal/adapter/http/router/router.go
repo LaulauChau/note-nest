@@ -33,6 +33,7 @@ func NewRouter(userController *controller.UserController, sessionController *con
 		r.Post("/api/logout", sessionController.Logout)
 		r.Get("/api/me", userController.GetCurrentUser)
 
+		// Note routes
 		r.Post("/api/notes", noteController.CreateNote)
 		r.Get("/api/notes", noteController.GetActiveNotes)
 		r.Get("/api/notes/archived", noteController.GetArchivedNotes)
@@ -40,11 +41,18 @@ func NewRouter(userController *controller.UserController, sessionController *con
 		r.Put("/api/notes/{noteID}", noteController.UpdateNote)
 		r.Delete("/api/notes/{noteID}", noteController.DeleteNote)
 
+		// Label routes
 		r.Post("/api/labels", labelController.CreateLabel)
 		r.Get("/api/labels", labelController.GetLabels)
 		r.Get("/api/labels/{labelID}", labelController.GetLabelByID)
+		r.Put("/api/labels/{labelID}", labelController.UpdateLabel)
+		r.Delete("/api/labels/{labelID}", labelController.DeleteLabel)
 		r.Get("/api/labels/{labelID}/notes", labelController.GetNotesForLabel)
+
+		// Note-Label relationship routes
 		r.Get("/api/notes/{noteID}/labels", labelController.GetNoteLabels)
+		r.Put("/api/notes/{noteID}/labels/{labelID}", labelController.AddLabelToNote)
+		r.Delete("/api/notes/{noteID}/labels/{labelID}", labelController.RemoveLabelFromNote)
 	})
 
 	return r

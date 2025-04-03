@@ -265,3 +265,182 @@ func (c *LabelController) GetNotesForLabel(w http.ResponseWriter, r *http.Reques
 		return
 	}
 }
+
+type UpdateLabelRequest struct {
+	Name  string `json:"name"`
+	Color string `json:"color"`
+}
+
+// UpdateLabel handles requests to update a label
+func (c *LabelController) UpdateLabel(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Get user from context (added by the auth middleware)
+	user, ok := r.Context().Value(UserContextKey).(*entities.User)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get label ID from URL parameter
+	labelID := chi.URLParam(r, "labelID")
+	if labelID == "" {
+		http.Error(w, "Label ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Parse the request body
+	var req UpdateLabelRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate input
+	if req.Name == "" {
+		http.Error(w, "Name is required", http.StatusBadRequest)
+		return
+	}
+
+	// Validate color (should be a valid hex color or other format)
+	if req.Color == "" {
+		// Default color if not provided
+		req.Color = "#3498db" // Blue
+	}
+
+	// Update the label
+	label, err := c.labelUseCase.UpdateLabel(ctx, labelID, user.ID, req.Name, req.Color)
+	if err != nil {
+		if err.Error() == "label not found" {
+			http.Error(w, "Label not found", http.StatusNotFound)
+			return
+		}
+		if err.Error() == "label with this name already exists" {
+			http.Error(w, err.Error(), http.StatusConflict)
+			return
+		}
+		http.Error(w, "Failed to update label", http.StatusInternalServerError)
+		return
+	}
+
+	// Return the updated label
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(LabelResponse{
+		ID:        label.ID,
+		Name:      label.Name,
+		Color:     label.Color,
+		CreatedAt: label.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: label.UpdatedAt.Format(time.RFC3339),
+	}); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (c *LabelController) DeleteLabel(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Get user from context (added by the auth middleware)
+	user, ok := r.Context().Value(UserContextKey).(*entities.User)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get label ID from URL parameter
+	labelID := chi.URLParam(r, "labelID")
+	if labelID == "" {
+		http.Error(w, "Label ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Delete the label
+	err := c.labelUseCase.DeleteLabel(ctx, labelID, user.ID)
+	if err != nil {
+		if err.Error() == "label not found" {
+			http.Error(w, "Label not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to delete label", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success with no content
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (c *LabelController) AddLabelToNote(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Get user from context (added by the auth middleware)
+	user, ok := r.Context().Value(UserContextKey).(*entities.User)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get note ID and label ID from URL parameters
+	noteID := chi.URLParam(r, "noteID")
+	labelID := chi.URLParam(r, "labelID")
+
+	if noteID == "" {
+		http.Error(w, "Note ID is required", http.StatusBadRequest)
+		return
+	}
+	if labelID == "" {
+		http.Error(w, "Label ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Associate the label with the note
+	err := c.labelUseCase.AddLabelToNote(ctx, noteID, labelID, user.ID)
+	if err != nil {
+		if err.Error() == "note not found" || err.Error() == "label not found" {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to add label to note", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success with no content
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (c *LabelController) RemoveLabelFromNote(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Get user from context (added by the auth middleware)
+	user, ok := r.Context().Value(UserContextKey).(*entities.User)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get note ID and label ID from URL parameters
+	noteID := chi.URLParam(r, "noteID")
+	labelID := chi.URLParam(r, "labelID")
+
+	if noteID == "" {
+		http.Error(w, "Note ID is required", http.StatusBadRequest)
+		return
+	}
+	if labelID == "" {
+		http.Error(w, "Label ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Disassociate the label from the note
+	err := c.labelUseCase.RemoveLabelFromNote(ctx, noteID, labelID, user.ID)
+	if err != nil {
+		if err.Error() == "note not found" || err.Error() == "label not found" {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to remove label from note", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success with no content
+	w.WriteHeader(http.StatusNoContent)
+}

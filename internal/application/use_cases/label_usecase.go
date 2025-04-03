@@ -142,3 +142,101 @@ func (uc *LabelUseCase) GetNotesForLabel(ctx context.Context, labelID, userID st
 
 	return notes, nil
 }
+
+func (uc *LabelUseCase) UpdateLabel(ctx context.Context, labelID, userID, name, color string) (*entities.Label, error) {
+	// Get the label
+	label, err := uc.labelRepo.GetByID(ctx, labelID)
+	if err != nil {
+		return nil, err
+	}
+
+	// If label not found or doesn't belong to the user, return error
+	if label == nil || label.UserID != userID {
+		return nil, errors.New("label not found")
+	}
+
+	// Check if another label with the same name already exists for this user
+	if name != label.Name {
+		existingLabel, err := uc.labelRepo.GetByName(ctx, userID, name)
+		if err != nil {
+			return nil, err
+		}
+		if existingLabel != nil && existingLabel.ID != labelID {
+			return nil, errors.New("label with this name already exists")
+		}
+	}
+
+	// Update the label fields
+	label.Name = name
+	label.Color = color
+	label.UpdatedAt = time.Now()
+
+	// Save the updated label
+	if err := uc.labelRepo.Update(ctx, label); err != nil {
+		return nil, err
+	}
+
+	return label, nil
+}
+
+func (uc *LabelUseCase) DeleteLabel(ctx context.Context, labelID, userID string) error {
+	// Get the label
+	label, err := uc.labelRepo.GetByID(ctx, labelID)
+	if err != nil {
+		return err
+	}
+
+	// If label not found or doesn't belong to the user, return error
+	if label == nil || label.UserID != userID {
+		return errors.New("label not found")
+	}
+
+	// Delete the label
+	return uc.labelRepo.Delete(ctx, labelID)
+}
+
+func (uc *LabelUseCase) AddLabelToNote(ctx context.Context, noteID, labelID, userID string) error {
+	// Verify the note exists and belongs to the user
+	note, err := uc.noteRepo.GetByID(ctx, noteID)
+	if err != nil {
+		return err
+	}
+	if note == nil || note.UserID != userID {
+		return errors.New("note not found")
+	}
+
+	// Verify the label exists and belongs to the user
+	label, err := uc.labelRepo.GetByID(ctx, labelID)
+	if err != nil {
+		return err
+	}
+	if label == nil || label.UserID != userID {
+		return errors.New("label not found")
+	}
+
+	// Associate the label with the note
+	return uc.labelRepo.AddLabelToNote(ctx, noteID, labelID)
+}
+
+func (uc *LabelUseCase) RemoveLabelFromNote(ctx context.Context, noteID, labelID, userID string) error {
+	// Verify the note exists and belongs to the user
+	note, err := uc.noteRepo.GetByID(ctx, noteID)
+	if err != nil {
+		return err
+	}
+	if note == nil || note.UserID != userID {
+		return errors.New("note not found")
+	}
+
+	// Verify the label exists and belongs to the user
+	label, err := uc.labelRepo.GetByID(ctx, labelID)
+	if err != nil {
+		return err
+	}
+	if label == nil || label.UserID != userID {
+		return errors.New("label not found")
+	}
+
+	// Disassociate the label from the note
+	return uc.labelRepo.RemoveLabelFromNote(ctx, noteID, labelID)
+}
