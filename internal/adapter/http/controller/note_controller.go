@@ -12,19 +12,22 @@ import (
 )
 
 type NoteController struct {
-	noteUseCase *use_cases.NoteUseCase
+	noteUseCase  *use_cases.NoteUseCase
+	labelUseCase *use_cases.LabelUseCase
 }
 
-func NewNoteController(noteUseCase *use_cases.NoteUseCase) *NoteController {
+func NewNoteController(noteUseCase *use_cases.NoteUseCase, labelUseCase *use_cases.LabelUseCase) *NoteController {
 	return &NoteController{
-		noteUseCase: noteUseCase,
+		noteUseCase:  noteUseCase,
+		labelUseCase: labelUseCase,
 	}
 }
 
 type CreateNoteRequest struct {
-	Title   string `json:"title"`
-	Content string `json:"content"`
-	Label   string `json:"label"`
+	Title    string   `json:"title"`
+	Content  string   `json:"content"`
+	Label    string   `json:"label"`     // Keep for backward compatibility
+	LabelIDs []string `json:"label_ids"` // New field for associating labels
 }
 
 type NoteResponse struct {
@@ -61,11 +64,30 @@ func (c *NoteController) CreateNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create the note
-	note, err := c.noteUseCase.CreateNote(ctx, user.ID, req.Title, req.Content, req.Label)
+	// Create the note with labels
+	note, err := c.noteUseCase.CreateNoteWithLabels(ctx, user.ID, req.Title, req.Content, req.Label, req.LabelIDs)
 	if err != nil {
 		http.Error(w, "Failed to create note", http.StatusInternalServerError)
 		return
+	}
+
+	// Fetch labels for the note
+	labels, err := c.labelUseCase.GetLabelsForNote(ctx, note.ID, user.ID)
+	if err != nil {
+		// Continue even if there's an error fetching labels
+		labels = []*entities.Label{}
+	}
+
+	// Convert labels to response format
+	labelResponses := make([]LabelResponse, len(labels))
+	for i, label := range labels {
+		labelResponses[i] = LabelResponse{
+			ID:        label.ID,
+			Name:      label.Name,
+			Color:     label.Color,
+			CreatedAt: label.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: label.UpdatedAt.Format(time.RFC3339),
+		}
 	}
 
 	// Return the note
@@ -77,6 +99,7 @@ func (c *NoteController) CreateNote(w http.ResponseWriter, r *http.Request) {
 		Content:    note.Content,
 		IsArchived: note.IsArchived,
 		Label:      note.Label,
+		Labels:     labelResponses,
 		CreatedAt:  note.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:  note.UpdatedAt.Format(time.RFC3339),
 	}); err != nil {
@@ -221,10 +244,11 @@ func (c *NoteController) GetArchivedNotes(w http.ResponseWriter, r *http.Request
 }
 
 type UpdateNoteRequest struct {
-	Title      string `json:"title"`
-	Content    string `json:"content"`
-	IsArchived bool   `json:"is_archived"`
-	Label      string `json:"label"`
+	Title      string   `json:"title"`
+	Content    string   `json:"content"`
+	IsArchived bool     `json:"is_archived"`
+	Label      string   `json:"label"`     // Keep for backward compatibility
+	LabelIDs   []string `json:"label_ids"` // New field for associating labels
 }
 
 func (c *NoteController) UpdateNote(w http.ResponseWriter, r *http.Request) {
@@ -257,8 +281,8 @@ func (c *NoteController) UpdateNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update the note
-	note, err := c.noteUseCase.UpdateNote(ctx, noteID, user.ID, req.Title, req.Content, req.Label, req.IsArchived)
+	// Update the note with labels
+	note, err := c.noteUseCase.UpdateNoteWithLabels(ctx, noteID, user.ID, req.Title, req.Content, req.Label, req.IsArchived, req.LabelIDs)
 	if err != nil {
 		if err.Error() == "note not found" {
 			http.Error(w, "Note not found", http.StatusNotFound)
@@ -266,6 +290,25 @@ func (c *NoteController) UpdateNote(w http.ResponseWriter, r *http.Request) {
 		}
 		http.Error(w, "Failed to update note", http.StatusInternalServerError)
 		return
+	}
+
+	// Fetch labels for the note
+	labels, err := c.labelUseCase.GetLabelsForNote(ctx, note.ID, user.ID)
+	if err != nil {
+		// Continue even if there's an error fetching labels
+		labels = []*entities.Label{}
+	}
+
+	// Convert labels to response format
+	labelResponses := make([]LabelResponse, len(labels))
+	for i, label := range labels {
+		labelResponses[i] = LabelResponse{
+			ID:        label.ID,
+			Name:      label.Name,
+			Color:     label.Color,
+			CreatedAt: label.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: label.UpdatedAt.Format(time.RFC3339),
+		}
 	}
 
 	// Return the updated note
@@ -276,6 +319,7 @@ func (c *NoteController) UpdateNote(w http.ResponseWriter, r *http.Request) {
 		Content:    note.Content,
 		IsArchived: note.IsArchived,
 		Label:      note.Label,
+		Labels:     labelResponses,
 		CreatedAt:  note.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:  note.UpdatedAt.Format(time.RFC3339),
 	}); err != nil {
