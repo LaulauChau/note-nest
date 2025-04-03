@@ -50,7 +50,7 @@ func TestHTTPHandlers(t *testing.T) {
 		registerPayload := map[string]string{
 			"email":    "registertest@example.com",
 			"name":     "Register Test",
-			"password": "securepassword",
+			"password": "SecureP@ssw0rd",
 		}
 		jsonPayload, err := json.Marshal(registerPayload)
 		require.NoError(t, err)
@@ -74,11 +74,98 @@ func TestHTTPHandlers(t *testing.T) {
 		assert.Equal(t, registerPayload["name"], response["name"])
 	})
 
+	t.Run("RegisterUserInvalidEmail", func(t *testing.T) {
+		// Create request payload with invalid email
+		registerPayload := map[string]string{
+			"email":    "invalid-email",
+			"name":     "Invalid Email Test",
+			"password": "SecureP@ssw0rd123",
+		}
+		jsonPayload, err := json.Marshal(registerPayload)
+		require.NoError(t, err)
+
+		// Create request
+		req := httptest.NewRequest(http.MethodPost, "/api/register", bytes.NewBuffer(jsonPayload))
+		req.Header.Set("Content-Type", "application/json")
+
+		// Perform request
+		recorder := httptest.NewRecorder()
+		r.ServeHTTP(recorder, req)
+
+		// Check response
+		require.Equal(t, http.StatusBadRequest, recorder.Code)
+	})
+
+	t.Run("RegisterUserPasswordTooShort", func(t *testing.T) {
+		// Create request payload with short password
+		registerPayload := map[string]string{
+			"email":    "short@example.com",
+			"name":     "Short Password Test",
+			"password": "Short1@", // Less than 12 characters
+		}
+		jsonPayload, err := json.Marshal(registerPayload)
+		require.NoError(t, err)
+
+		// Create request
+		req := httptest.NewRequest(http.MethodPost, "/api/register", bytes.NewBuffer(jsonPayload))
+		req.Header.Set("Content-Type", "application/json")
+
+		// Perform request
+		recorder := httptest.NewRecorder()
+		r.ServeHTTP(recorder, req)
+
+		// Check response
+		require.Equal(t, http.StatusBadRequest, recorder.Code)
+	})
+
+	t.Run("RegisterUserPasswordNoUppercase", func(t *testing.T) {
+		// Create request payload with password missing uppercase
+		registerPayload := map[string]string{
+			"email":    "noupper@example.com",
+			"name":     "No Uppercase Test",
+			"password": "nouppercase1@#", // Missing uppercase
+		}
+		jsonPayload, err := json.Marshal(registerPayload)
+		require.NoError(t, err)
+
+		// Create request
+		req := httptest.NewRequest(http.MethodPost, "/api/register", bytes.NewBuffer(jsonPayload))
+		req.Header.Set("Content-Type", "application/json")
+
+		// Perform request
+		recorder := httptest.NewRecorder()
+		r.ServeHTTP(recorder, req)
+
+		// Check response
+		require.Equal(t, http.StatusBadRequest, recorder.Code)
+	})
+
+	t.Run("LoginUserInvalidEmail", func(t *testing.T) {
+		// Create login payload with invalid email
+		loginPayload := map[string]string{
+			"email":    "invalid-email",
+			"password": "L0ginP@ssword123",
+		}
+		jsonPayload, err := json.Marshal(loginPayload)
+		require.NoError(t, err)
+
+		// Create login request
+		req := httptest.NewRequest(http.MethodPost, "/api/login", bytes.NewBuffer(jsonPayload))
+		req.Header.Set("Content-Type", "application/json")
+
+		// Perform request
+		recorder := httptest.NewRecorder()
+		r.ServeHTTP(recorder, req)
+
+		// Check response
+		require.Equal(t, http.StatusBadRequest, recorder.Code)
+	})
+
 	t.Run("LoginUser", func(t *testing.T) {
 		// First register a user
 		email := "logintest@example.com"
 		name := "Login Test"
-		password := "loginpassword"
+		password := "L0ginP@ssword123"
 
 		user, err := userUseCase.RegisterUser(ctx, email, name, password)
 		require.NoError(t, err)
@@ -126,7 +213,7 @@ func TestHTTPHandlers(t *testing.T) {
 		// First register and login a user
 		email := "protectedtest@example.com"
 		name := "Protected Test"
-		password := "protectedpassword"
+		password := "Pr0tected!P@ssw0rd"
 
 		user, err := userUseCase.RegisterUser(ctx, email, name, password)
 		require.NoError(t, err)
@@ -166,7 +253,7 @@ func TestHTTPHandlers(t *testing.T) {
 		// First register and login a user
 		email := "logouttest@example.com"
 		name := "Logout Test"
-		password := "logoutpassword"
+		password := "L0g0ut!P@ssword123"
 
 		user, err := userUseCase.RegisterUser(ctx, email, name, password)
 		require.NoError(t, err)

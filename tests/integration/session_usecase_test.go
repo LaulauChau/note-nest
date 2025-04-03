@@ -39,7 +39,7 @@ func TestSessionUseCaseIntegration(t *testing.T) {
 	// Test user
 	email := "test@example.com"
 	name := "Test User"
-	password := "securepassword"
+	password := "S3ssionT3st!P@ss123"
 
 	// Register a test user
 	user, err := userUseCase.RegisterUser(ctx, email, name, password)

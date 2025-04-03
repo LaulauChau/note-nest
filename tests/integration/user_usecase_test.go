@@ -33,7 +33,7 @@ func TestUserUseCaseIntegration(t *testing.T) {
 		// Register a new user
 		email := "test@example.com"
 		name := "Test User"
-		password := "securepassword"
+		password := "TestUs3r!P@ssw0rd"
 
 		user, err := userUseCase.RegisterUser(ctx, email, name, password)
 		require.NoError(t, err)
@@ -51,7 +51,7 @@ func TestUserUseCaseIntegration(t *testing.T) {
 		assert.Empty(t, authenticatedUser.Password)
 
 		// Try to authenticate with incorrect password
-		invalidUser, err := userUseCase.AuthenticateUser(ctx, email, "wrongpassword")
+		invalidUser, err := userUseCase.AuthenticateUser(ctx, email, "Wr0ng!P@ssw0rd123")
 		assert.Error(t, err)
 		assert.Nil(t, invalidUser)
 
@@ -65,14 +65,14 @@ func TestUserUseCaseIntegration(t *testing.T) {
 		// Register a user
 		email := "duplicate@example.com"
 		name := "First User"
-		password := "password123"
+		password := "FirstUs3r!P@ssw0rd"
 
 		user, err := userUseCase.RegisterUser(ctx, email, name, password)
 		require.NoError(t, err)
 		require.NotNil(t, user)
 
 		// Try to register another user with the same email
-		duplicateUser, err := userUseCase.RegisterUser(ctx, email, "Second User", "anotherpassword")
+		duplicateUser, err := userUseCase.RegisterUser(ctx, email, "Second User", "Sec0ndUs3r!P@ssw0rd")
 		assert.Error(t, err)
 		assert.Nil(t, duplicateUser)
 		assert.Equal(t, "email already taken", err.Error())

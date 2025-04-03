@@ -35,7 +35,7 @@ func TestRegisterUser(t *testing.T) {
 
 	email := "test@example.com"
 	name := "Test User"
-	password := "securepassword"
+	password := "SecureP@ssw0rd123"
 	hashedPassword := "hashed_password_value"
 
 	// Mock GetByEmail to return nil (user doesn't exist)
@@ -75,7 +75,7 @@ func TestRegisterUser_EmailAlreadyExists(t *testing.T) {
 
 	email := "existing@example.com"
 	name := "Test User"
-	password := "securepassword"
+	password := "ExistingP@ssw0rd123"
 
 	// Mock GetByEmail to return an existing user
 	existingUser := &entities.User{
@@ -107,7 +107,7 @@ func TestAuthenticateUser_Success(t *testing.T) {
 	mockHashService := new(MockHashService)
 
 	email := "test@example.com"
-	password := "securepassword"
+	password := "AuthP@ssw0rd123"
 	hashedPassword := "hashed_password_value"
 
 	user := &entities.User{
@@ -146,7 +146,7 @@ func TestAuthenticateUser_InvalidCredentials(t *testing.T) {
 	mockHashService := new(MockHashService)
 
 	email := "test@example.com"
-	password := "wrongpassword"
+	password := "Wr0ngP@ssword123"
 	hashedPassword := "hashed_password_value"
 
 	user := &entities.User{
@@ -183,7 +183,7 @@ func TestAuthenticateUser_UserNotFound(t *testing.T) {
 	mockHashService := new(MockHashService)
 
 	email := "nonexistent@example.com"
-	password := "anypassword"
+	password := "N0nExist@ntUser123"
 
 	// Mock GetByEmail to return nil (user not found)
 	mockUserRepo.On("GetByEmail", ctx, email).Return(nil, nil)

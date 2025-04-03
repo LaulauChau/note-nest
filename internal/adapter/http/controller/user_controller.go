@@ -3,6 +3,7 @@ package controller
 import (
 	"encoding/json"
 	"net/http"
+	"regexp"
 
 	"github.com/LaulauChau/note-nest/internal/application/use_cases"
 	"github.com/LaulauChau/note-nest/internal/domain/entities"
@@ -51,6 +52,40 @@ func (c *UserController) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate email format
+	emailRegex := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+	match, err := regexp.MatchString(emailRegex, req.Email)
+	if err != nil || !match {
+		http.Error(w, "Invalid email format", http.StatusBadRequest)
+		return
+	}
+
+	// Validate password requirements
+	if len(req.Password) < 12 {
+		http.Error(w, "Password must be at least 12 characters long", http.StatusBadRequest)
+		return
+	}
+
+	var hasUpper, hasLower, hasNumber, hasSpecial bool
+	for _, char := range req.Password {
+		switch {
+		case 'A' <= char && char <= 'Z':
+			hasUpper = true
+		case 'a' <= char && char <= 'z':
+			hasLower = true
+		case '0' <= char && char <= '9':
+			hasNumber = true
+		case char >= 33 && char <= 126 && !('a' <= char && char <= 'z') &&
+			!('A' <= char && char <= 'Z') && !('0' <= char && char <= '9'):
+			hasSpecial = true
+		}
+	}
+
+	if !hasUpper || !hasLower || !hasNumber || !hasSpecial {
+		http.Error(w, "Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character", http.StatusBadRequest)
+		return
+	}
+
 	// Register the user
 	user, err := c.userUseCase.RegisterUser(ctx, req.Email, req.Name, req.Password)
 	if err != nil {
@@ -82,6 +117,14 @@ func (c *UserController) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate email format
+	emailRegex := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+	match, err := regexp.MatchString(emailRegex, req.Email)
+	if err != nil || !match {
+		http.Error(w, "Invalid email format", http.StatusBadRequest)
 		return
 	}
 

@@ -36,7 +36,7 @@ func TestAuthenticationFlow(t *testing.T) {
 	// Test data
 	email := "authflow@example.com"
 	name := "Auth Flow User"
-	password := "securepassword"
+	password := "AuthFl0w!P@ssw0rd"
 
 	t.Run("CompleteAuthFlow", func(t *testing.T) {
 		// 1. Register a user
@@ -54,7 +54,7 @@ func TestAuthenticationFlow(t *testing.T) {
 		assert.Equal(t, user.ID, authenticatedUser.ID)
 
 		// 3. Try to authenticate with incorrect password
-		invalidUser, err := userUseCase.AuthenticateUser(ctx, email, "wrongpassword")
+		invalidUser, err := userUseCase.AuthenticateUser(ctx, email, "Wr0ng!P@ssw0rd123")
 		assert.Error(t, err)
 		assert.Nil(t, invalidUser)
 
