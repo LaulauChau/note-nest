@@ -1,0 +1,38 @@
+name: note-nest
+
+services:
+  app:
+    build:
+      context: .
+      target: final
+    container_name: go
+    env_file:
+      - path: .env
+        required: true
+    depends_on:
+      database:
+        condition: service_healthy
+    ports:
+      - ${SERVER_PORT:-8080}:${SERVER_PORT:-8080}
+
+  database:
+    image: postgres:17-alpine
+    container_name: postgres
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+    expose:
+      - ${POSTGRES_PORT:-5432}
+    healthcheck:
+      interval: 10s
+      retries: 5
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      timeout: 5s
+    restart: unless-stopped
+    user: ${POSTGRES_USER:-postgres}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+volumes:
+  db-data:
+    name: note-nest-db-data
