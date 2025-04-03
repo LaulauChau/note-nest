@@ -178,7 +178,10 @@ func (uc *NoteUseCase) CreateNoteWithLabels(ctx context.Context, userID, title, 
 		}
 
 		// Associate label with note
-		uc.labelRepo.AddLabelToNote(ctx, note.ID, labelID)
+		err = uc.labelRepo.AddLabelToNote(ctx, note.ID, labelID)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return note, nil
@@ -219,14 +222,20 @@ func (uc *NoteUseCase) UpdateNoteWithLabels(ctx context.Context, noteID, userID,
 			}
 
 			// Associate label with note
-			uc.labelRepo.AddLabelToNote(ctx, noteID, labelID)
+			err = uc.labelRepo.AddLabelToNote(ctx, noteID, labelID)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	// Remove labels that are no longer associated
 	for _, label := range currentLabels {
 		if !newLabelMap[label.ID] {
-			uc.labelRepo.RemoveLabelFromNote(ctx, noteID, label.ID)
+			err = uc.labelRepo.RemoveLabelFromNote(ctx, noteID, label.ID)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
