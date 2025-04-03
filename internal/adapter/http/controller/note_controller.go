@@ -205,3 +205,99 @@ func (c *NoteController) GetArchivedNotes(w http.ResponseWriter, r *http.Request
 		return
 	}
 }
+
+type UpdateNoteRequest struct {
+	Title      string `json:"title"`
+	Content    string `json:"content"`
+	IsArchived bool   `json:"is_archived"`
+	Label      string `json:"label"`
+}
+
+func (c *NoteController) UpdateNote(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Get user from context (added by the auth middleware)
+	user, ok := r.Context().Value(UserContextKey).(*entities.User)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get note ID from URL parameter
+	noteID := chi.URLParam(r, "noteID")
+	if noteID == "" {
+		http.Error(w, "Note ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Parse the request body
+	var req UpdateNoteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate input
+	if req.Title == "" {
+		http.Error(w, "Title is required", http.StatusBadRequest)
+		return
+	}
+
+	// Update the note
+	note, err := c.noteUseCase.UpdateNote(ctx, noteID, user.ID, req.Title, req.Content, req.Label, req.IsArchived)
+	if err != nil {
+		if err.Error() == "note not found" {
+			http.Error(w, "Note not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to update note", http.StatusInternalServerError)
+		return
+	}
+
+	// Return the updated note
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(NoteResponse{
+		ID:         note.ID,
+		Title:      note.Title,
+		Content:    note.Content,
+		IsArchived: note.IsArchived,
+		Label:      note.Label,
+		CreatedAt:  note.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:  note.UpdatedAt.Format(time.RFC3339),
+	}); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (c *NoteController) DeleteNote(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Get user from context (added by the auth middleware)
+	user, ok := r.Context().Value(UserContextKey).(*entities.User)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get note ID from URL parameter
+	noteID := chi.URLParam(r, "noteID")
+	if noteID == "" {
+		http.Error(w, "Note ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Delete the note
+	err := c.noteUseCase.DeleteNote(ctx, noteID, user.ID)
+	if err != nil {
+		if err.Error() == "note not found" {
+			http.Error(w, "Note not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to delete note", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success with no content
+	w.WriteHeader(http.StatusNoContent)
+}

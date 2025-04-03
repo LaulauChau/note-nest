@@ -99,3 +99,46 @@ func (uc *NoteUseCase) GetArchivedNotes(ctx context.Context, userID string) ([]*
 	// Get archived notes for the user
 	return uc.noteRepo.GetArchivedByUserID(ctx, userID)
 }
+
+func (uc *NoteUseCase) UpdateNote(ctx context.Context, noteID, userID, title, content, label string, isArchived bool) (*entities.Note, error) {
+	// Get the note
+	note, err := uc.noteRepo.GetByID(ctx, noteID)
+	if err != nil {
+		return nil, err
+	}
+
+	// If note not found or doesn't belong to the user, return error
+	if note == nil || note.UserID != userID {
+		return nil, errors.New("note not found")
+	}
+
+	// Update the note fields
+	note.Title = title
+	note.Content = content
+	note.Label = label
+	note.IsArchived = isArchived
+	note.UpdatedAt = time.Now() // Make sure this line is present
+
+	// Save the updated note
+	if err := uc.noteRepo.Update(ctx, note); err != nil {
+		return nil, err
+	}
+
+	return note, nil
+}
+
+func (uc *NoteUseCase) DeleteNote(ctx context.Context, noteID, userID string) error {
+	// Get the note
+	note, err := uc.noteRepo.GetByID(ctx, noteID)
+	if err != nil {
+		return err
+	}
+
+	// If note not found or doesn't belong to the user, return error
+	if note == nil || note.UserID != userID {
+		return errors.New("note not found")
+	}
+
+	// Delete the note
+	return uc.noteRepo.Delete(ctx, noteID)
+}

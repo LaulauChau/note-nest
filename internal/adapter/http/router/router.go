@@ -37,6 +37,8 @@ func NewRouter(userController *controller.UserController, sessionController *con
 		r.Get("/api/notes", noteController.GetActiveNotes)
 		r.Get("/api/notes/archived", noteController.GetArchivedNotes)
 		r.Get("/api/notes/{noteID}", noteController.GetNoteByID)
+		r.Put("/api/notes/{noteID}", noteController.UpdateNote)
+		r.Delete("/api/notes/{noteID}", noteController.DeleteNote)
 	})
 
 	return r

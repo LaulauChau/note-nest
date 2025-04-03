@@ -267,4 +267,82 @@ func TestNoteRepository(t *testing.T) {
 		require.NoError(t, err)
 		assert.Nil(t, retrievedNote)
 	})
+
+	t.Run("UpdateNote", func(t *testing.T) {
+		// Create a note
+		noteID := uuid.New().String()
+		note := &entities.Note{
+			ID:         noteID,
+			UserID:     user.ID,
+			Title:      "Original Title",
+			Content:    "Original content",
+			IsArchived: false,
+			Label:      "original-label",
+			CreatedAt:  now,
+			UpdatedAt:  now,
+		}
+
+		// Save the note
+		require.NoError(t, noteRepo.Create(ctx, note))
+
+		// Update the note
+		updatedNote := &entities.Note{
+			ID:         noteID,
+			UserID:     user.ID,
+			Title:      "Updated Title",
+			Content:    "Updated content",
+			IsArchived: true,
+			Label:      "updated-label",
+			CreatedAt:  note.CreatedAt,
+			UpdatedAt:  time.Now(),
+		}
+
+		// Update in the repository
+		require.NoError(t, noteRepo.Update(ctx, updatedNote))
+
+		// Get the note to verify the update
+		retrievedNote, err := noteRepo.GetByID(ctx, noteID)
+		require.NoError(t, err)
+		require.NotNil(t, retrievedNote)
+
+		// Verify note details were updated
+		assert.Equal(t, noteID, retrievedNote.ID)
+		assert.Equal(t, user.ID, retrievedNote.UserID)
+		assert.Equal(t, "Updated Title", retrievedNote.Title)
+		assert.Equal(t, "Updated content", retrievedNote.Content)
+		assert.Equal(t, "updated-label", retrievedNote.Label)
+		assert.True(t, retrievedNote.IsArchived)
+		assert.Equal(t, note.CreatedAt.Unix(), retrievedNote.CreatedAt.Unix()) // Created time should not change
+		assert.True(t, retrievedNote.UpdatedAt.After(note.UpdatedAt))          // Updated time should be newer
+	})
+
+	t.Run("DeleteNote", func(t *testing.T) {
+		// Create a note
+		noteID := uuid.New().String()
+		note := &entities.Note{
+			ID:         noteID,
+			UserID:     user.ID,
+			Title:      "Note to Delete",
+			Content:    "This note will be deleted",
+			IsArchived: false,
+			CreatedAt:  now,
+			UpdatedAt:  now,
+		}
+
+		// Save the note
+		require.NoError(t, noteRepo.Create(ctx, note))
+
+		// Verify the note exists
+		existingNote, err := noteRepo.GetByID(ctx, noteID)
+		require.NoError(t, err)
+		require.NotNil(t, existingNote)
+
+		// Delete the note
+		require.NoError(t, noteRepo.Delete(ctx, noteID))
+
+		// Verify the note is gone
+		deletedNote, err := noteRepo.GetByID(ctx, noteID)
+		require.NoError(t, err)
+		assert.Nil(t, deletedNote, "Note should be deleted")
+	})
 }
