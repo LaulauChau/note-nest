@@ -326,3 +326,235 @@ func TestGetArchivedNotes(t *testing.T) {
 	mockUserRepo.AssertExpectations(t)
 	mockNoteRepo.AssertExpectations(t)
 }
+
+func TestUpdateNote(t *testing.T) {
+	// Arrange
+	ctx := context.Background()
+	mockNoteRepo := new(MockNoteRepository)
+	mockUserRepo := new(MockUserRepository)
+
+	userID := uuid.New().String()
+	noteID := uuid.New().String()
+
+	// Create a timestamp in the past
+	pastTime := time.Now().Add(-1 * time.Hour)
+
+	// Existing note
+	existingNote := &entities.Note{
+		ID:         noteID,
+		UserID:     userID,
+		Title:      "Original Title",
+		Content:    "Original content",
+		IsArchived: false,
+		Label:      "original-label",
+		CreatedAt:  pastTime,
+		UpdatedAt:  pastTime,
+	}
+
+	// Updated fields
+	newTitle := "Updated Title"
+	newContent := "Updated content"
+	newLabel := "updated-label"
+	newIsArchived := true
+
+	// Mock note repository to return the existing note
+	mockNoteRepo.On("GetByID", ctx, noteID).Return(existingNote, nil)
+
+	// Use mock.Anything for the note parameter to avoid matching issues
+	mockNoteRepo.On("Update", ctx, mock.Anything).Return(nil).Run(func(args mock.Arguments) {
+		// Verify the updated note properties within the Run function
+		updatedNote := args.Get(1).(*entities.Note)
+		assert.Equal(t, noteID, updatedNote.ID)
+		assert.Equal(t, userID, updatedNote.UserID)
+		assert.Equal(t, newTitle, updatedNote.Title)
+		assert.Equal(t, newContent, updatedNote.Content)
+		assert.Equal(t, newLabel, updatedNote.Label)
+		assert.Equal(t, newIsArchived, updatedNote.IsArchived)
+		assert.Equal(t, pastTime, updatedNote.CreatedAt)
+		assert.True(t, updatedNote.UpdatedAt.After(pastTime))
+	})
+
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+
+	// Act
+	updatedNote, err := useCase.UpdateNote(ctx, noteID, userID, newTitle, newContent, newLabel, newIsArchived)
+
+	// Assert
+	assert.NoError(t, err)
+	assert.NotNil(t, updatedNote)
+	assert.Equal(t, noteID, updatedNote.ID)
+	assert.Equal(t, userID, updatedNote.UserID)
+	assert.Equal(t, newTitle, updatedNote.Title)
+	assert.Equal(t, newContent, updatedNote.Content)
+	assert.Equal(t, newLabel, updatedNote.Label)
+	assert.Equal(t, newIsArchived, updatedNote.IsArchived)
+	assert.Equal(t, pastTime, updatedNote.CreatedAt)      // Created time should not change
+	assert.True(t, updatedNote.UpdatedAt.After(pastTime)) // Updated time should be newer
+
+	mockNoteRepo.AssertExpectations(t)
+}
+
+func TestUpdateNote_NotFound(t *testing.T) {
+	// Arrange
+	ctx := context.Background()
+	mockNoteRepo := new(MockNoteRepository)
+	mockUserRepo := new(MockUserRepository)
+
+	userID := uuid.New().String()
+	noteID := uuid.New().String()
+
+	// Mock note repository to return nil (note not found)
+	mockNoteRepo.On("GetByID", ctx, noteID).Return(nil, nil)
+
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+
+	// Act
+	updatedNote, err := useCase.UpdateNote(ctx, noteID, userID, "Title", "Content", "label", false)
+
+	// Assert
+	assert.Error(t, err)
+	assert.Nil(t, updatedNote)
+	assert.Contains(t, err.Error(), "note not found")
+
+	mockNoteRepo.AssertExpectations(t)
+	// Update should not be called if note is not found
+	mockNoteRepo.AssertNotCalled(t, "Update")
+}
+
+func TestUpdateNote_WrongUser(t *testing.T) {
+	// Arrange
+	ctx := context.Background()
+	mockNoteRepo := new(MockNoteRepository)
+	mockUserRepo := new(MockUserRepository)
+
+	userID := uuid.New().String()
+	anotherUserID := uuid.New().String()
+	noteID := uuid.New().String()
+
+	// Note belongs to another user
+	note := &entities.Note{
+		ID:         noteID,
+		UserID:     anotherUserID,
+		Title:      "Original Title",
+		Content:    "Original content",
+		IsArchived: false,
+		Label:      "original-label",
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+
+	// Mock note repository to return a note that belongs to another user
+	mockNoteRepo.On("GetByID", ctx, noteID).Return(note, nil)
+
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+
+	// Act
+	updatedNote, err := useCase.UpdateNote(ctx, noteID, userID, "Updated Title", "Updated content", "updated-label", true)
+
+	// Assert
+	assert.Error(t, err)
+	assert.Nil(t, updatedNote)
+	assert.Contains(t, err.Error(), "note not found")
+
+	mockNoteRepo.AssertExpectations(t)
+	// Update should not be called if note belongs to another user
+	mockNoteRepo.AssertNotCalled(t, "Update")
+}
+
+func TestDeleteNote(t *testing.T) {
+	// Arrange
+	ctx := context.Background()
+	mockNoteRepo := new(MockNoteRepository)
+	mockUserRepo := new(MockUserRepository)
+
+	userID := uuid.New().String()
+	noteID := uuid.New().String()
+
+	// Existing note
+	note := &entities.Note{
+		ID:        noteID,
+		UserID:    userID,
+		Title:     "Note to Delete",
+		Content:   "This note will be deleted",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	// Mock note repository to return the existing note
+	mockNoteRepo.On("GetByID", ctx, noteID).Return(note, nil)
+
+	// Mock note repository to delete the note
+	mockNoteRepo.On("Delete", ctx, noteID).Return(nil)
+
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+
+	// Act
+	err := useCase.DeleteNote(ctx, noteID, userID)
+
+	// Assert
+	assert.NoError(t, err)
+	mockNoteRepo.AssertExpectations(t)
+}
+
+func TestDeleteNote_NotFound(t *testing.T) {
+	// Arrange
+	ctx := context.Background()
+	mockNoteRepo := new(MockNoteRepository)
+	mockUserRepo := new(MockUserRepository)
+
+	userID := uuid.New().String()
+	noteID := uuid.New().String()
+
+	// Mock note repository to return nil (note not found)
+	mockNoteRepo.On("GetByID", ctx, noteID).Return(nil, nil)
+
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+
+	// Act
+	err := useCase.DeleteNote(ctx, noteID, userID)
+
+	// Assert
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "note not found")
+
+	mockNoteRepo.AssertExpectations(t)
+	// Delete should not be called if note is not found
+	mockNoteRepo.AssertNotCalled(t, "Delete")
+}
+
+func TestDeleteNote_WrongUser(t *testing.T) {
+	// Arrange
+	ctx := context.Background()
+	mockNoteRepo := new(MockNoteRepository)
+	mockUserRepo := new(MockUserRepository)
+
+	userID := uuid.New().String()
+	anotherUserID := uuid.New().String()
+	noteID := uuid.New().String()
+
+	// Note belongs to another user
+	note := &entities.Note{
+		ID:        noteID,
+		UserID:    anotherUserID,
+		Title:     "Another User's Note",
+		Content:   "This note belongs to another user",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	// Mock note repository to return a note that belongs to another user
+	mockNoteRepo.On("GetByID", ctx, noteID).Return(note, nil)
+
+	useCase := use_cases.NewNoteUseCase(mockNoteRepo, mockUserRepo)
+
+	// Act
+	err := useCase.DeleteNote(ctx, noteID, userID)
+
+	// Assert
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "note not found")
+
+	mockNoteRepo.AssertExpectations(t)
+	// Delete should not be called if note belongs to another user
+	mockNoteRepo.AssertNotCalled(t, "Delete")
+}
