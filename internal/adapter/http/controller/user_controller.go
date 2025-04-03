@@ -65,25 +65,18 @@ func (c *UserController) Register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Password must be at least 12 characters long", http.StatusBadRequest)
 		return
 	}
-
-	var hasUpper, hasLower, hasNumber, hasSpecial bool
-	for _, char := range req.Password {
-		switch {
-		case 'A' <= char && char <= 'Z':
-			hasUpper = true
-		case 'a' <= char && char <= 'z':
-			hasLower = true
-		case '0' <= char && char <= '9':
-			hasNumber = true
-		case char >= 33 && char <= 126 && !('a' <= char && char <= 'z') &&
-			!('A' <= char && char <= 'Z') && !('0' <= char && char <= '9'):
-			hasSpecial = true
-		}
+	passwordChecks := []string{
+		`[A-Z]`,                              // Uppercase
+		`[a-z]`,                              // Lowercase
+		`[0-9]`,                              // Number
+		`[!@#$%^&*()_+=-{}[\]|\:;"'<>,.?/~]`, // Special character (adjust as needed)
 	}
-
-	if !hasUpper || !hasLower || !hasNumber || !hasSpecial {
-		http.Error(w, "Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character", http.StatusBadRequest)
-		return
+	for _, check := range passwordChecks {
+		match, _ := regexp.MatchString(check, req.Password)
+		if !match {
+			http.Error(w, "Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character", http.StatusBadRequest)
+			return
+		}
 	}
 
 	// Register the user
