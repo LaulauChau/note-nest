@@ -39,6 +39,7 @@ func main() {
 	// Initialize repository implementations
 	userRepo := repositories.NewUserRepository(queries)
 	sessionRepo := repositories.NewSessionRepository(queries)
+	noteRepo := repositories.NewNoteRepository(queries)
 
 	// Initialize services
 	tokenService := services.NewTokenService()
@@ -47,13 +48,15 @@ func main() {
 	// Initialize use cases
 	userUseCase := use_cases.NewUserUseCase(userRepo, hashService)
 	sessionUseCase := use_cases.NewSessionUseCase(sessionRepo, userRepo, tokenService)
+	noteUseCase := use_cases.NewNoteUseCase(noteRepo, userRepo)
 
 	// Initialize controllers
 	userController := controller.NewUserController(userUseCase, sessionUseCase)
 	sessionController := controller.NewSessionController(sessionUseCase)
+	noteController := controller.NewNoteController(noteUseCase)
 
 	// Initialize router
-	r := router.NewRouter(userController, sessionController)
+	r := router.NewRouter(userController, sessionController, noteController)
 
 	// Initialize and start server
 	server := http.NewServer(r, config.Server.Port)

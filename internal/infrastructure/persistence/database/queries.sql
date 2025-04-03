@@ -44,3 +44,23 @@ DELETE FROM sessions WHERE id = $1;
 
 -- name: DeleteAllSessionsByUserID :exec
 DELETE FROM sessions WHERE user_id = $1;
+
+-- name: CreateNote :one
+INSERT INTO notes (id, user_id, title, content, is_archived, label, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING *;
+
+-- name: GetNoteByID :one
+SELECT * FROM notes WHERE id = $1;
+
+-- name: GetNotesByUserID :many
+SELECT * FROM notes WHERE user_id = $1 AND is_archived = false ORDER BY updated_at DESC;
+
+-- name: GetArchivedNotesByUserID :many
+SELECT * FROM notes WHERE user_id = $1 AND is_archived = true ORDER BY updated_at DESC;
+
+-- name: UpdateNote :exec
+UPDATE notes SET title = $2, content = $3, is_archived = $4, label = $5, updated_at = $6 WHERE id = $1;
+
+-- name: DeleteNote :exec
+DELETE FROM notes WHERE id = $1;
