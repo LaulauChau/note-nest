@@ -29,6 +29,8 @@ func TestHTTPHandlers(t *testing.T) {
 	queries := repositories.New(db.Pool)
 	userRepo := repositories.NewUserRepository(queries)
 	sessionRepo := repositories.NewSessionRepository(queries)
+	noteRepo := repositories.NewNoteRepository(queries)
+	labelRepo := repositories.NewLabelRepository(queries)
 
 	// Initialize services
 	tokenService := services.NewTokenService()
@@ -37,13 +39,17 @@ func TestHTTPHandlers(t *testing.T) {
 	// Initialize use cases
 	userUseCase := use_cases.NewUserUseCase(userRepo, hashService)
 	sessionUseCase := use_cases.NewSessionUseCase(sessionRepo, userRepo, tokenService)
+	noteUseCase := use_cases.NewNoteUseCase(noteRepo, userRepo, labelRepo)
+	labelUseCase := use_cases.NewLabelUseCase(labelRepo, userRepo, noteRepo)
 
 	// Initialize controllers
 	userController := controller.NewUserController(userUseCase, sessionUseCase)
 	sessionController := controller.NewSessionController(sessionUseCase)
+	noteController := controller.NewNoteController(noteUseCase, labelUseCase)
+	labelController := controller.NewLabelController(labelUseCase)
 
 	// Initialize router
-	r := router.NewRouter(userController, sessionController)
+	r := router.NewRouter(userController, sessionController, noteController, labelController)
 
 	t.Run("RegisterUser", func(t *testing.T) {
 		// Create request payload

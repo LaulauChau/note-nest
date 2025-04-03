@@ -141,5 +141,5 @@ func (r *SessionRepositoryImpl) DeleteAllByUserID(ctx context.Context, userID st
 		return err
 	}
 
-	return r.q.DeleteAllSessionsByUserID(ctx, id)
+	return r.q.DeleteAllSessionsByUserID(ctx, id.String())
 }
