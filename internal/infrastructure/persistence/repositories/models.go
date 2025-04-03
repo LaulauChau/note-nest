@@ -10,6 +10,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Label struct {
+	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
+	Name      string    `json:"name"`
+	Color     string    `json:"color"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 type Note struct {
 	ID         string      `json:"id"`
 	UserID     string      `json:"user_id"`
@@ -19,6 +28,11 @@ type Note struct {
 	Label      pgtype.Text `json:"label"`
 	CreatedAt  time.Time   `json:"created_at"`
 	UpdatedAt  time.Time   `json:"updated_at"`
+}
+
+type NoteLabel struct {
+	NoteID  string `json:"note_id"`
+	LabelID string `json:"label_id"`
 }
 
 type Session struct {
