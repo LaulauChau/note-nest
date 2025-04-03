@@ -95,14 +95,18 @@ func SetupTestDatabase(ctx context.Context) (*TestDatabase, error) {
 	}
 	// Check if connection ultimately failed after retries
 	if connectErr != nil {
-		container.Terminate(ctx) // Terminate container if we couldn't connect
+		if termErr := container.Terminate(ctx); termErr != nil {
+			log.Printf("Failed to terminate container after connection failure: %v", termErr)
+		}
 		return nil, fmt.Errorf("failed to connect to database after %d retries: %w", maxRetries, connectErr)
 	}
 
 	// Initialize test database with migrations
 	if err := applyMigrations(ctx, pool); err != nil {
 		pool.Close()
-		container.Terminate(ctx) // Terminate container if migrations fail
+		if termErr := container.Terminate(ctx); termErr != nil {
+			log.Printf("Failed to terminate container after migration failure: %v", termErr)
+		}
 		return nil, fmt.Errorf("failed to apply migrations: %w", err)
 	}
 
