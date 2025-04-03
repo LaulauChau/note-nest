@@ -41,6 +41,10 @@ func NewRouter(userController *controller.UserController, sessionController *con
 		r.Delete("/api/notes/{noteID}", noteController.DeleteNote)
 
 		r.Post("/api/labels", labelController.CreateLabel)
+		r.Get("/api/labels", labelController.GetLabels)
+		r.Get("/api/labels/{labelID}", labelController.GetLabelByID)
+		r.Get("/api/labels/{labelID}/notes", labelController.GetNotesForLabel)
+		r.Get("/api/notes/{noteID}/labels", labelController.GetNoteLabels)
 	})
 
 	return r

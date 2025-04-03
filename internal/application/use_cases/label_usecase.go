@@ -66,3 +66,79 @@ func (uc *LabelUseCase) CreateLabel(ctx context.Context, userID, name, color str
 
 	return label, nil
 }
+
+func (uc *LabelUseCase) GetLabelByID(ctx context.Context, labelID, userID string) (*entities.Label, error) {
+	// Get the label
+	label, err := uc.labelRepo.GetByID(ctx, labelID)
+	if err != nil {
+		return nil, err
+	}
+
+	// If label not found or doesn't belong to the user, return nil
+	if label == nil || label.UserID != userID {
+		return nil, errors.New("label not found")
+	}
+
+	return label, nil
+}
+
+func (uc *LabelUseCase) GetLabelsByUser(ctx context.Context, userID string) ([]*entities.Label, error) {
+	// Verify the user exists
+	user, err := uc.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, errors.New("user not found")
+	}
+
+	// Get labels for the user
+	return uc.labelRepo.GetByUserID(ctx, userID)
+}
+
+func (uc *LabelUseCase) GetLabelsForNote(ctx context.Context, noteID, userID string) ([]*entities.Label, error) {
+	// Verify the note exists and belongs to the user
+	note, err := uc.noteRepo.GetByID(ctx, noteID)
+	if err != nil {
+		return nil, err
+	}
+	if note == nil || note.UserID != userID {
+		return nil, errors.New("note not found")
+	}
+
+	// Get labels for the note
+	return uc.labelRepo.GetLabelsForNote(ctx, noteID)
+}
+
+func (uc *LabelUseCase) GetNotesForLabel(ctx context.Context, labelID, userID string) ([]*entities.Note, error) {
+	// Verify the label exists and belongs to the user
+	label, err := uc.GetLabelByID(ctx, labelID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if label == nil {
+		return nil, errors.New("label not found")
+	}
+
+	// Get note IDs for the label
+	noteIDs, err := uc.labelRepo.GetNotesForLabel(ctx, labelID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the notes
+	notes := make([]*entities.Note, 0, len(noteIDs))
+	for _, noteID := range noteIDs {
+		note, err := uc.noteRepo.GetByID(ctx, noteID)
+		if err != nil {
+			continue // Skip notes with errors
+		}
+
+		// Only include notes that belong to the user
+		if note != nil && note.UserID == userID {
+			notes = append(notes, note)
+		}
+	}
+
+	return notes, nil
+}

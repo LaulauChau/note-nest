@@ -12,17 +12,20 @@ import (
 )
 
 type NoteUseCase struct {
-	noteRepo repositories.NoteRepository
-	userRepo repositories.UserRepository
+	noteRepo  repositories.NoteRepository
+	userRepo  repositories.UserRepository
+	labelRepo repositories.LabelRepository
 }
 
 func NewNoteUseCase(
 	noteRepo repositories.NoteRepository,
 	userRepo repositories.UserRepository,
+	labelRepo repositories.LabelRepository,
 ) *NoteUseCase {
 	return &NoteUseCase{
-		noteRepo: noteRepo,
-		userRepo: userRepo,
+		noteRepo:  noteRepo,
+		userRepo:  userRepo,
+		labelRepo: labelRepo,
 	}
 }
 
@@ -141,4 +144,20 @@ func (uc *NoteUseCase) DeleteNote(ctx context.Context, noteID, userID string) er
 
 	// Delete the note
 	return uc.noteRepo.Delete(ctx, noteID)
+}
+
+func (uc *NoteUseCase) GetNoteWithLabels(ctx context.Context, noteID, userID string) (*entities.Note, []*entities.Label, error) {
+	// Get the note
+	note, err := uc.GetNoteByID(ctx, noteID, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Get labels for the note
+	labels, err := uc.labelRepo.GetLabelsForNote(ctx, noteID)
+	if err != nil {
+		return note, nil, err
+	}
+
+	return note, labels, nil
 }
