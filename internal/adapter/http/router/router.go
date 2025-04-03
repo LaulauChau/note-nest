@@ -11,6 +11,7 @@ import (
 )
 
 func NewRouter(userController *controller.UserController, sessionController *controller.SessionController, noteController *controller.NoteController, labelController *controller.LabelController) http.Handler {
+
 	r := chi.NewRouter()
 
 	// Middleware

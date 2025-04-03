@@ -41,7 +41,7 @@ func (r *UserRepositoryImpl) GetByID(ctx context.Context, id string) (*entities.
 	if err != nil {
 		return nil, err
 	}
-
+  
 	user, err := r.q.GetUserByID(ctx, userID.String())
 	if err != nil {
 		if err.Error() == "no rows in result set" {
