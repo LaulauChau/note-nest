@@ -9,8 +9,50 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const createNote = `-- name: CreateNote :one
+INSERT INTO notes (id, user_id, title, content, is_archived, label, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, user_id, title, content, is_archived, label, created_at, updated_at
+`
+
+type CreateNoteParams struct {
+	ID         string      `json:"id"`
+	UserID     string      `json:"user_id"`
+	Title      string      `json:"title"`
+	Content    string      `json:"content"`
+	IsArchived bool        `json:"is_archived"`
+	Label      pgtype.Text `json:"label"`
+	CreatedAt  time.Time   `json:"created_at"`
+	UpdatedAt  time.Time   `json:"updated_at"`
+}
+
+func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, error) {
+	row := q.db.QueryRow(ctx, createNote,
+		arg.ID,
+		arg.UserID,
+		arg.Title,
+		arg.Content,
+		arg.IsArchived,
+		arg.Label,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	var i Note
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.Content,
+		&i.IsArchived,
+		&i.Label,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
 
 const createSession = `-- name: CreateSession :one
 INSERT INTO sessions (user_id, expires_at)
@@ -70,6 +112,15 @@ func (q *Queries) DeleteAllSessionsByUserID(ctx context.Context, userID string) 
 	return err
 }
 
+const deleteNote = `-- name: DeleteNote :exec
+DELETE FROM notes WHERE id = $1
+`
+
+func (q *Queries) DeleteNote(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, deleteNote, id)
+	return err
+}
+
 const deleteSession = `-- name: DeleteSession :exec
 DELETE FROM sessions WHERE id = $1
 `
@@ -86,6 +137,92 @@ DELETE FROM users WHERE id = $1
 func (q *Queries) DeleteUser(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, deleteUser, id)
 	return err
+}
+
+const getArchivedNotesByUserID = `-- name: GetArchivedNotesByUserID :many
+SELECT id, user_id, title, content, is_archived, label, created_at, updated_at FROM notes WHERE user_id = $1 AND is_archived = true ORDER BY updated_at DESC
+`
+
+func (q *Queries) GetArchivedNotesByUserID(ctx context.Context, userID string) ([]Note, error) {
+	rows, err := q.db.Query(ctx, getArchivedNotesByUserID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Note
+	for rows.Next() {
+		var i Note
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Title,
+			&i.Content,
+			&i.IsArchived,
+			&i.Label,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getNoteByID = `-- name: GetNoteByID :one
+SELECT id, user_id, title, content, is_archived, label, created_at, updated_at FROM notes WHERE id = $1
+`
+
+func (q *Queries) GetNoteByID(ctx context.Context, id string) (Note, error) {
+	row := q.db.QueryRow(ctx, getNoteByID, id)
+	var i Note
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.Content,
+		&i.IsArchived,
+		&i.Label,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getNotesByUserID = `-- name: GetNotesByUserID :many
+SELECT id, user_id, title, content, is_archived, label, created_at, updated_at FROM notes WHERE user_id = $1 AND is_archived = false ORDER BY updated_at DESC
+`
+
+func (q *Queries) GetNotesByUserID(ctx context.Context, userID string) ([]Note, error) {
+	rows, err := q.db.Query(ctx, getNotesByUserID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Note
+	for rows.Next() {
+		var i Note
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Title,
+			&i.Content,
+			&i.IsArchived,
+			&i.Label,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getSessionByID = `-- name: GetSessionByID :one
@@ -177,6 +314,31 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const updateNote = `-- name: UpdateNote :exec
+UPDATE notes SET title = $2, content = $3, is_archived = $4, label = $5, updated_at = $6 WHERE id = $1
+`
+
+type UpdateNoteParams struct {
+	ID         string      `json:"id"`
+	Title      string      `json:"title"`
+	Content    string      `json:"content"`
+	IsArchived bool        `json:"is_archived"`
+	Label      pgtype.Text `json:"label"`
+	UpdatedAt  time.Time   `json:"updated_at"`
+}
+
+func (q *Queries) UpdateNote(ctx context.Context, arg UpdateNoteParams) error {
+	_, err := q.db.Exec(ctx, updateNote,
+		arg.ID,
+		arg.Title,
+		arg.Content,
+		arg.IsArchived,
+		arg.Label,
+		arg.UpdatedAt,
+	)
+	return err
 }
 
 const updateSessionExpiresAt = `-- name: UpdateSessionExpiresAt :exec

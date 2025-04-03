@@ -7,8 +7,19 @@ package repositories
 import (
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type Note struct {
+	ID         string      `json:"id"`
+	UserID     string      `json:"user_id"`
+	Title      string      `json:"title"`
+	Content    string      `json:"content"`
+	IsArchived bool        `json:"is_archived"`
+	Label      pgtype.Text `json:"label"`
+	CreatedAt  time.Time   `json:"created_at"`
+	UpdatedAt  time.Time   `json:"updated_at"`
+}
 
 type Session struct {
 	ID        string    `json:"id"`
