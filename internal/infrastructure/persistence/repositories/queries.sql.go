@@ -12,6 +12,56 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addLabelToNote = `-- name: AddLabelToNote :exec
+INSERT INTO note_labels (note_id, label_id) VALUES ($1, $2) ON CONFLICT DO NOTHING
+`
+
+type AddLabelToNoteParams struct {
+	NoteID  string `json:"note_id"`
+	LabelID string `json:"label_id"`
+}
+
+func (q *Queries) AddLabelToNote(ctx context.Context, arg AddLabelToNoteParams) error {
+	_, err := q.db.Exec(ctx, addLabelToNote, arg.NoteID, arg.LabelID)
+	return err
+}
+
+const createLabel = `-- name: CreateLabel :one
+INSERT INTO labels (id, user_id, name, color, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, user_id, name, color, created_at, updated_at
+`
+
+type CreateLabelParams struct {
+	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
+	Name      string    `json:"name"`
+	Color     string    `json:"color"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (q *Queries) CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error) {
+	row := q.db.QueryRow(ctx, createLabel,
+		arg.ID,
+		arg.UserID,
+		arg.Name,
+		arg.Color,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	var i Label
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Color,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const createNote = `-- name: CreateNote :one
 INSERT INTO notes (id, user_id, title, content, is_archived, label, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -112,6 +162,15 @@ func (q *Queries) DeleteAllSessionsByUserID(ctx context.Context, userID string) 
 	return err
 }
 
+const deleteLabel = `-- name: DeleteLabel :exec
+DELETE FROM labels WHERE id = $1
+`
+
+func (q *Queries) DeleteLabel(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, deleteLabel, id)
+	return err
+}
+
 const deleteNote = `-- name: DeleteNote :exec
 DELETE FROM notes WHERE id = $1
 `
@@ -172,6 +231,112 @@ func (q *Queries) GetArchivedNotesByUserID(ctx context.Context, userID string) (
 	return items, nil
 }
 
+const getLabelByID = `-- name: GetLabelByID :one
+SELECT id, user_id, name, color, created_at, updated_at FROM labels WHERE id = $1
+`
+
+func (q *Queries) GetLabelByID(ctx context.Context, id string) (Label, error) {
+	row := q.db.QueryRow(ctx, getLabelByID, id)
+	var i Label
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Color,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getLabelByName = `-- name: GetLabelByName :one
+SELECT id, user_id, name, color, created_at, updated_at FROM labels WHERE user_id = $1 AND name = $2
+`
+
+type GetLabelByNameParams struct {
+	UserID string `json:"user_id"`
+	Name   string `json:"name"`
+}
+
+func (q *Queries) GetLabelByName(ctx context.Context, arg GetLabelByNameParams) (Label, error) {
+	row := q.db.QueryRow(ctx, getLabelByName, arg.UserID, arg.Name)
+	var i Label
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Color,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getLabelsByUserID = `-- name: GetLabelsByUserID :many
+SELECT id, user_id, name, color, created_at, updated_at FROM labels WHERE user_id = $1 ORDER BY name
+`
+
+func (q *Queries) GetLabelsByUserID(ctx context.Context, userID string) ([]Label, error) {
+	rows, err := q.db.Query(ctx, getLabelsByUserID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Label
+	for rows.Next() {
+		var i Label
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Name,
+			&i.Color,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getLabelsForNote = `-- name: GetLabelsForNote :many
+SELECT l.id, l.user_id, l.name, l.color, l.created_at, l.updated_at FROM labels l
+JOIN note_labels nl ON l.id = nl.label_id
+WHERE nl.note_id = $1
+ORDER BY l.name
+`
+
+func (q *Queries) GetLabelsForNote(ctx context.Context, noteID string) ([]Label, error) {
+	rows, err := q.db.Query(ctx, getLabelsForNote, noteID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Label
+	for rows.Next() {
+		var i Label
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Name,
+			&i.Color,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getNoteByID = `-- name: GetNoteByID :one
 SELECT id, user_id, title, content, is_archived, label, created_at, updated_at FROM notes WHERE id = $1
 `
@@ -218,6 +383,30 @@ func (q *Queries) GetNotesByUserID(ctx context.Context, userID string) ([]Note, 
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getNotesForLabel = `-- name: GetNotesForLabel :many
+SELECT note_id FROM note_labels WHERE label_id = $1
+`
+
+func (q *Queries) GetNotesForLabel(ctx context.Context, labelID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, getNotesForLabel, labelID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var note_id string
+		if err := rows.Scan(&note_id); err != nil {
+			return nil, err
+		}
+		items = append(items, note_id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -314,6 +503,41 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const removeLabelFromNote = `-- name: RemoveLabelFromNote :exec
+DELETE FROM note_labels WHERE note_id = $1 AND label_id = $2
+`
+
+type RemoveLabelFromNoteParams struct {
+	NoteID  string `json:"note_id"`
+	LabelID string `json:"label_id"`
+}
+
+func (q *Queries) RemoveLabelFromNote(ctx context.Context, arg RemoveLabelFromNoteParams) error {
+	_, err := q.db.Exec(ctx, removeLabelFromNote, arg.NoteID, arg.LabelID)
+	return err
+}
+
+const updateLabel = `-- name: UpdateLabel :exec
+UPDATE labels SET name = $2, color = $3, updated_at = $4 WHERE id = $1
+`
+
+type UpdateLabelParams struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Color     string    `json:"color"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (q *Queries) UpdateLabel(ctx context.Context, arg UpdateLabelParams) error {
+	_, err := q.db.Exec(ctx, updateLabel,
+		arg.ID,
+		arg.Name,
+		arg.Color,
+		arg.UpdatedAt,
+	)
+	return err
 }
 
 const updateNote = `-- name: UpdateNote :exec

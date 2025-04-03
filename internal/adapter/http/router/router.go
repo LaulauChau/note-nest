@@ -10,7 +10,7 @@ import (
 	httpMiddleware "github.com/LaulauChau/note-nest/internal/adapter/http/middleware"
 )
 
-func NewRouter(userController *controller.UserController, sessionController *controller.SessionController, noteController *controller.NoteController) http.Handler {
+func NewRouter(userController *controller.UserController, sessionController *controller.SessionController, noteController *controller.NoteController, labelController *controller.LabelController) http.Handler {
 	r := chi.NewRouter()
 
 	// Middleware
@@ -39,6 +39,8 @@ func NewRouter(userController *controller.UserController, sessionController *con
 		r.Get("/api/notes/{noteID}", noteController.GetNoteByID)
 		r.Put("/api/notes/{noteID}", noteController.UpdateNote)
 		r.Delete("/api/notes/{noteID}", noteController.DeleteNote)
+
+		r.Post("/api/labels", labelController.CreateLabel)
 	})
 
 	return r
